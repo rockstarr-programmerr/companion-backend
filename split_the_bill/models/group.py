@@ -10,3 +10,6 @@ class Group(TimeStamp):
     name = models.CharField(max_length=150)
     owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name='groups_owned')
     members = models.ManyToManyField(User, related_name='groups_joined')
+
+    def is_owner(self, user):
+        return user == self.owner

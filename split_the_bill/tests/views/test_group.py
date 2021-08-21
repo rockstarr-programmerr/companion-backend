@@ -204,11 +204,27 @@ class GroupViewSetTestCase(APITestCase):
         group3 = baker.make(Group, owner=user)
         group3.members.add(user)
 
+        group3_url = f'{self.url}{group3.pk}/'
         self.client.force_authenticate(user=user)
-        res = self.client.get(f'{self.url}{group3.pk}/')
+        res = self.client.get(group3_url)
         self.assertEqual(res.status_code, 200)
 
+        for index, member in enumerate(self.members):
+            self.client.force_authenticate(user=member)
+            res = self.client.get(group3_url)
+            self.assertEqual(res.status_code, 404)
+
+            res1 = self.client.get(f'{self.url}{self.group1.pk}/')
+            res2 = self.client.get(f'{self.url}{self.group2.pk}/')
+            if index in [0, 1]:
+                self.assertEqual(res1.status_code, 200)
+                self.assertEqual(res2.status_code, 404)
+            else:
+                self.assertEqual(res1.status_code, 404)
+                self.assertEqual(res2.status_code, 200)
+
         for group in [self.group1, self.group2]:
+            self.client.force_authenticate(user=user)
             res = self.client.get(f'{self.url}{group.pk}/')
             self.assertEqual(res.status_code, 404)
 
@@ -231,6 +247,18 @@ class GroupViewSetTestCase(APITestCase):
             res = req_method(f'{self.url}{group.pk}/', {'name': group_name})
             self.assertEqual(res.status_code, 404)
 
+        for index, member in enumerate(self.members):
+            self.client.force_authenticate(user=member)
+            res1 = req_method(f'{self.url}{self.group1.pk}/', {'name': group_name})
+            res2 = req_method(f'{self.url}{self.group2.pk}/', {'name': group_name})
+
+            if index in [0, 1]:
+                self.assertEqual(res1.status_code, 403)
+                self.assertEqual(res2.status_code, 404)
+            else:
+                self.assertEqual(res1.status_code, 404)
+                self.assertEqual(res2.status_code, 403)
+
     def test__delete_permission(self):
         user = baker.make(User)
         group3 = baker.make(Group, owner=user)
@@ -243,6 +271,14 @@ class GroupViewSetTestCase(APITestCase):
         for group in [self.group1, self.group2]:
             res = self.client.delete(f'{self.url}{group.pk}/')
             self.assertEqual(res.status_code, 404)
+
+        for member in self.group1.members.all():
+            if self.group1.is_owner(member):
+                continue
+
+            self.client.force_authenticate(user=member)
+            res = self.client.delete(f'{self.url}{self.group1.pk}/')
+            self.assertEqual(res.status_code, 403)
 
     @parameterized.expand([
         ['get', url],
