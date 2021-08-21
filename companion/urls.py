@@ -17,4 +17,5 @@ from django.urls import path, include
 
 urlpatterns = [
     path('users/', include('user.urls')),
+    path('split-the-bill/', include('split_the_bill.urls')),
 ]

@@ -56,6 +56,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'corsheaders',
     'user.apps.UserConfig',
+    'split_the_bill.apps.SplitTheBillConfig',
 ]
 
 MIDDLEWARE = [
@@ -159,4 +160,5 @@ REST_FRAMEWORK = {
         'anon': '60/min',
         'user': '60/min'
     },
+    'TEST_REQUEST_DEFAULT_FORMAT': 'json',
 }
