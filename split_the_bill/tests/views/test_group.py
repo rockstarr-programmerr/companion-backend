@@ -243,3 +243,17 @@ class GroupViewSetTestCase(APITestCase):
         for group in [self.group1, self.group2]:
             res = self.client.delete(f'{self.url}{group.pk}/')
             self.assertEqual(res.status_code, 404)
+
+    @parameterized.expand([
+        ['get', url],
+        ['get', url + '1/'],
+        ['post', url + '1/'],
+        ['put', url + '1/'],
+        ['patch', url + '1/'],
+        ['delete', url + '1/'],
+    ])
+    def test__unauthenticated_user_cannot_access(self, method, url):
+        self.client.force_authenticate(user=None)
+        req_method = getattr(self.client, method)
+        res = req_method(url)
+        self.assertEqual(res.status_code, 401)

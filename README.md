@@ -49,3 +49,9 @@ env = environ.Env(
     ...  # Variables are listed here
 )
 ```
+
+### Test
+Run unittests:
+```
+python manage.py test
+```
