@@ -9,12 +9,12 @@ class UserInfoSerializer(serializers.ModelSerializer):
         model = User
         fields = ['username', 'email']
 
-class RegisterReqSerializer(serializers.ModelSerializer):
+class RegisterSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ['username', 'email', 'password']
-
-class RegisterResSerializer(UserInfoSerializer):
-    """
-    After register successfull, I should get my info just like in 'get-my-info' endpoint
-    """
+        extra_kwargs = {
+            'password': {
+                'write_only': True
+            }
+        }

@@ -196,3 +196,16 @@ SIMPLE_JWT = {
     'SLIDING_TOKEN_LIFETIME': timedelta(minutes=5),
     'SLIDING_TOKEN_REFRESH_LIFETIME': timedelta(days=1),
 }
+
+if env('DEBUG'):
+    INSTALLED_APPS.extend([
+        'django.contrib.staticfiles',
+    ])
+
+    STATIC_ROOT = BASE_DIR / 'staticfiles'
+
+    REST_FRAMEWORK['DEFAULT_AUTHENTICATION_CLASSES'].extend([
+        'rest_framework.authentication.SessionAuthentication',  # For authentication to browsable API
+    ])
+
+    LOGIN_REDIRECT_URL = '/users/get-my-info/'

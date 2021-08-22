@@ -50,6 +50,13 @@ env = environ.Env(
 )
 ```
 
+### Browsable API
+You can login to the browsable API and explore it to help with development.
+Go to this URL in your brower, login with one of the user you created.
+```
+http://localhost:8000/api-auth/
+```
+
 ### Test
 Run unittests:
 ```
