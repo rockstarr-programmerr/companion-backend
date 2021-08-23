@@ -293,3 +293,43 @@ class GroupViewSetTestCase(APITestCase):
         req_method = getattr(self.client, method)
         res = req_method(url)
         self.assertEqual(res.status_code, 401)
+
+    def test__cannot_update_owner(self):
+        self.client.force_authenticate(user=self.owner)
+        user = baker.make(User)
+
+        name = fake.text(max_nb_chars=150)
+        data = {
+            'name': name,
+            'owner': user.pk
+        }
+        self.client.patch(f'{self.url}{self.group1.pk}/', data)
+
+        self.group1.refresh_from_db()
+        self.assertEqual(self.group1.name, name)
+        self.assertEqual(self.group1.owner, self.owner)
+        self.assertNotEqual(self.group1.owner, user)
+
+    @parameterized.expand([
+        ['post', False],
+        ['put', True],
+        ['patch', True],
+    ])
+    def test__cannot_owner__cannot__have_duplicated_group_name(self, method, is_detail):
+        self.client.force_authenticate(user=self.owner)
+
+        data = {'name': self.group1.name}
+        req_method = getattr(self.client, method)
+
+        url = self.url
+        if is_detail:
+            url += f'{self.group1.pk}/'
+
+        res = req_method(url, data)
+        self.assertEqual(res.status_code, 400)
+
+        actual = res.json()
+        expected = json.dumps({
+            'name': ['This group already exists.']
+        })
+        self.assertJSONEqual(expected, actual)
