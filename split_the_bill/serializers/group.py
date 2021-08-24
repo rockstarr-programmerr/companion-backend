@@ -14,10 +14,23 @@ class GroupSerializer(serializers.ModelSerializer):
         fields = ['pk', 'name', 'owner', 'members', 'create_time']
 
     def validate_name(self, name):
-        owner = self.context['request'].user
-        if Group.name_not_unique_for_owner(owner, name):
+        request = self.context['request']
+        owner = request.user
+        groups = Group.get_groups_by_owner_and_name(owner, name)
+        error = False
+
+        if request.method in ('PUT', 'PATCH'):
+            pk = request.parser_context['kwargs']['pk']
+            group = groups.first()
+            if group:
+                error = not Group.is_same_pk(group.pk, pk)
+        else:
+            error = groups.exists()
+
+        if error:
             raise serializers.ValidationError(
                 detail=_('This group already exists.'),
                 code='unique_together'
             )
+
         return name

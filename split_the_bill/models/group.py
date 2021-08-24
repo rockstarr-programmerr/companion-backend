@@ -17,6 +17,10 @@ class Group(TimeStamp):
     def is_owner(self, user):
         return user == self.owner
 
+    @staticmethod
+    def is_same_pk(pk1, pk2):
+        return str(pk1) == str(pk2)
+
     @classmethod
-    def name_not_unique_for_owner(cls, owner, name):
-        return cls.objects.filter(owner=owner, name=name).exists()
+    def get_groups_by_owner_and_name(cls, owner, name):
+        return cls.objects.filter(owner=owner, name=name)

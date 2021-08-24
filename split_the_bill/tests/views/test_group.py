@@ -315,10 +315,10 @@ class GroupViewSetTestCase(APITestCase):
         ['put', True],
         ['patch', True],
     ])
-    def test__cannot_owner__cannot__have_duplicated_group_name(self, method, is_detail):
+    def test__owner_cannot__have_duplicated_group_name(self, method, is_detail):
         self.client.force_authenticate(user=self.owner)
 
-        data = {'name': self.group1.name}
+        data = {'name': self.group2.name}
         req_method = getattr(self.client, method)
 
         url = self.url
@@ -333,3 +333,29 @@ class GroupViewSetTestCase(APITestCase):
             'name': ['This group already exists.']
         })
         self.assertJSONEqual(expected, actual)
+
+    @parameterized.expand([
+        ['post', False, True],
+        ['put', True, False],
+        ['patch', True, False],
+    ])
+    def test__validate_unique_together(self, method, is_detail, expect_error):
+        self.client.force_authenticate(user=self.owner)
+
+        data = {'name': self.group1.name}
+        req_method = getattr(self.client, method)
+
+        url = self.url
+        if is_detail:
+            url += f'{self.group1.pk}/'
+
+        res = req_method(url, data)
+        if expect_error:
+            self.assertEqual(res.status_code, 400)
+            actual = res.json()
+            expected = json.dumps({
+                'name': ['This group already exists.']
+            })
+            self.assertJSONEqual(expected, actual)
+        else:
+            self.assertEqual(res.status_code, 200)
