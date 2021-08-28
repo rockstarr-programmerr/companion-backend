@@ -11,6 +11,7 @@ urlpatterns = [
 ]
 
 router = DefaultRouter()
+router.register('trips', views.TripViewSet, basename='trip')
 router.register('groups', views.GroupViewSet, basename='group')
 
 urlpatterns.extend(router.urls)
