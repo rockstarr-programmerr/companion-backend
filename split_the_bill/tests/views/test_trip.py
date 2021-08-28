@@ -69,6 +69,12 @@ class TripViewSetTestCase(APITestCase):
             'email': user.email,
         }
 
+    def get_add_members_url(self, pk):
+        return f'{self.url}{pk}/add-members/'
+
+    def get_remove_members_url(self, pk):
+        return f'{self.url}{pk}/remove-members/'
+
     def test__get_list(self):
         self.client.force_authenticate(user=self.creator)
         res = self.client.get(self.url)
@@ -309,3 +315,71 @@ class TripViewSetTestCase(APITestCase):
         self.assertEqual(self.trip1.name, name)
         self.assertEqual(self.trip1.creator, self.creator)
         self.assertNotEqual(self.trip1.creator, user)
+
+    def test__add_members(self):
+        self.client.force_authenticate(user=self.creator)
+
+        new_members = baker.make(User, _quantity=3)
+        existing_members = self.trip1.members.all()
+        for member in new_members:
+            self.assertNotIn(member, existing_members)
+
+        url = self.get_add_members_url(self.trip1.pk)
+        data = {
+            'member_pks': [member.pk for member in new_members]
+        }
+        res = self.client.post(url, data)
+        self.assertEqual(res.status_code, 200)
+
+        self.trip1.refresh_from_db()
+        members = self.trip1.members.all()
+        for member in new_members:
+            self.assertIn(member, members)
+
+    def test__remove_members(self):
+        self.client.force_authenticate(user=self.creator)
+
+        new_members = baker.make(User, _quantity=3)
+        self.trip1.members.add(*new_members)
+        members = self.trip1.members.all()
+
+        for member in new_members:
+            self.assertIn(member, members)
+
+        url = self.get_remove_members_url(self.trip1.pk)
+        data = {
+            'member_pks': [member.pk for member in new_members]
+        }
+        res = self.client.post(url, data)
+        self.assertEqual(res.status_code, 200)
+
+        self.trip1.refresh_from_db()
+        members = self.trip1.members.all()
+        for member in new_members:
+            self.assertNotIn(member, members)
+
+    @parameterized.expand([
+        ['add'],
+        ['remove'],
+    ])
+    def test__add_or_remove_members_validations(self, action):
+        self.client.force_authenticate(user=self.creator)
+        url = getattr(self, f'get_{action}_members_url')(self.trip1.pk)
+
+        # member_pks is empty
+        data = {'member_pks': []}
+        res = self.client.post(url, data)
+        self.assertEqual(res.status_code, 400)
+        self.assertDictEqual(res.json(), {'member_pks': ['This list may not be empty.']})
+
+        # member_pk < 1
+        data = {'member_pks': [1, 2, 3, -1]}
+        res = self.client.post(url, data)
+        self.assertEqual(res.status_code, 400)
+        self.assertDictEqual(res.json(), {'member_pks': {'3': ['Ensure this value is greater than or equal to 1.']}})
+
+        # More than 100 member_pks
+        data = {'member_pks': list(range(1, 102))}
+        res = self.client.post(url, data)
+        self.assertEqual(res.status_code, 400)
+        self.assertDictEqual(res.json(), {'member_pks': ['Ensure this field has no more than 100 elements.']})

@@ -1,7 +1,11 @@
+from rest_framework.generics import get_object_or_404
 from rest_framework.viewsets import ModelViewSet
+from rest_framework.decorators import action
+from rest_framework.response import Response
 
-from split_the_bill.serializers.trip import TripSerializer
+from split_the_bill.serializers.trip import AddMembersSerializer, RemoveMembersSerializer, TripSerializer
 from split_the_bill.permissions import IsTripCreatorOrReadonly
+from split_the_bill.models import Trip
 
 
 class TripViewSet(ModelViewSet):
@@ -17,3 +21,25 @@ class TripViewSet(ModelViewSet):
             creator=creator,
             members=[creator]  # Auto add `creator` as first member
         )
+
+    @action(methods=['POST'], detail=True, url_path='add-members')
+    def add_members(self, request, pk):
+        serializer = AddMembersSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        member_pks = serializer.validated_data['member_pks']
+        trip = get_object_or_404(Trip, pk=pk)
+        trip.members.add(*member_pks)
+
+        return Response()
+
+    @action(methods=['POST'], detail=True, url_path='remove-members')
+    def remove_members(self, request, pk):
+        serializer = RemoveMembersSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        member_pks = serializer.validated_data['member_pks']
+        trip = get_object_or_404(Trip, pk=pk)
+        trip.members.remove(*member_pks)
+
+        return Response()
