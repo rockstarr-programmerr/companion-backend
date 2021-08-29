@@ -72,6 +72,18 @@ class TripViewSetTestCase(APITestCase):
             'email': user.email,
         }
 
+    @staticmethod
+    def get_pagination_json(results, count=None, next=None, previous=None):
+        if count is None:
+            count = len(results)
+
+        return {
+            'count': count,
+            'next': next,
+            'previous': previous,
+            'results': results,
+        }
+
     def get_add_members_url(self, pk):
         return f'{self.url}{pk}/add-members/'
 
@@ -84,10 +96,11 @@ class TripViewSetTestCase(APITestCase):
         self.assertEqual(res.status_code, 200)
 
         actual = res.json()
-        expected = json.dumps([
+        results = [
             self.get_trip1_json(res.wsgi_request),
             self.get_trip2_json(res.wsgi_request),
-        ])
+        ]
+        expected = json.dumps(self.get_pagination_json(results))
 
         self.assertJSONEqual(expected, actual)
 
@@ -203,9 +216,10 @@ class TripViewSetTestCase(APITestCase):
         self.client.force_authenticate(user=user)
         res = self.client.get(self.url)
         data = res.json()
+        results = data['results']
 
-        self.assertEqual(len(data), 1)
-        pks = [trip['pk'] for trip in data]
+        self.assertEqual(len(results), 1)
+        pks = [trip['pk'] for trip in results]
         self.assertNotIn(self.trip1.pk, pks)
         self.assertNotIn(self.trip2.pk, pks)
         self.assertIn(trip3.pk, pks)

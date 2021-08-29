@@ -165,6 +165,8 @@ REST_FRAMEWORK = {
         'user': '60/min'
     },
     'TEST_REQUEST_DEFAULT_FORMAT': 'json',
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.LimitOffsetPagination',
+    'PAGE_SIZE': 25,
 }
 
 SIMPLE_JWT = {

@@ -72,16 +72,29 @@ class GroupViewSetTestCase(APITestCase):
             'email': user.email,
         }
 
+    @staticmethod
+    def get_pagination_json(results, count=None, next=None, previous=None):
+        if count is None:
+            count = len(results)
+
+        return {
+            'count': count,
+            'next': next,
+            'previous': previous,
+            'results': results,
+        }
+
     def test__get_list(self):
         self.client.force_authenticate(user=self.owner)
         res = self.client.get(self.url)
         self.assertEqual(res.status_code, 200)
 
         actual = res.json()
-        expected = json.dumps([
+        results = [
             self.get_group1_json(res.wsgi_request),
             self.get_group2_json(res.wsgi_request),
-        ])
+        ]
+        expected = json.dumps(self.get_pagination_json(results))
 
         self.assertJSONEqual(expected, actual)
 
@@ -198,9 +211,10 @@ class GroupViewSetTestCase(APITestCase):
         self.client.force_authenticate(user=user)
         res = self.client.get(self.url)
         data = res.json()
+        results = data['results']
 
-        self.assertEqual(len(data), 1)
-        pks = [group['pk'] for group in data]
+        self.assertEqual(len(results), 1)
+        pks = [group['pk'] for group in results]
         self.assertNotIn(self.group1.pk, pks)
         self.assertNotIn(self.group2.pk, pks)
         self.assertIn(group3.pk, pks)
