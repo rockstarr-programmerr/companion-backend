@@ -5,13 +5,13 @@ from split_the_bill.models import Group
 from .user import UserSerializer
 
 
-class GroupSerializer(serializers.ModelSerializer):
+class GroupSerializer(serializers.HyperlinkedModelSerializer):
     owner = UserSerializer(read_only=True)
     members = UserSerializer(many=True, read_only=True)
 
     class Meta:
         model = Group
-        fields = ['pk', 'name', 'owner', 'members', 'create_time']
+        fields = ['url', 'pk', 'name', 'owner', 'members', 'create_time']
 
     def validate_name(self, name):
         request = self.context['request']

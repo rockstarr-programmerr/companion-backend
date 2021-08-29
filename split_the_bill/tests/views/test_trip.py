@@ -7,6 +7,7 @@ from parameterized import parameterized
 
 from django.contrib.auth import get_user_model
 from rest_framework.test import APITestCase
+from rest_framework.reverse import reverse
 
 from split_the_bill.models import Trip
 
@@ -33,10 +34,11 @@ class TripViewSetTestCase(APITestCase):
             self.trip2 = baker.make(Trip, creator=self.creator)
             self.trip2.members.add(self.creator, *self.members[2:])
 
-    @property
-    def trip1_json(self):
+    def get_trip1_json(self, request):
+        pk = self.trip1.pk
         return {
-            "pk": self.trip1.pk,
+            "url": reverse('trip-detail', kwargs={'pk': pk}, request=request),
+            "pk": pk,
             "name": self.trip1.name,
             "creator": self.get_user_json(self.creator),
             "members": [
@@ -47,10 +49,11 @@ class TripViewSetTestCase(APITestCase):
             "create_time": self.trip1_create_time
         }
 
-    @property
-    def trip2_json(self):
+    def get_trip2_json(self, request):
+        pk = self.trip2.pk
         return {
-            "pk": self.trip2.pk,
+            "url": reverse('trip-detail', kwargs={'pk': pk}, request=request),
+            "pk": pk,
             "name": self.trip2.name,
             "creator": self.get_user_json(self.creator),
             "members": [
@@ -82,8 +85,8 @@ class TripViewSetTestCase(APITestCase):
 
         actual = res.json()
         expected = json.dumps([
-            self.trip1_json,
-            self.trip2_json,
+            self.get_trip1_json(res.wsgi_request),
+            self.get_trip2_json(res.wsgi_request),
         ])
 
         self.assertJSONEqual(expected, actual)
@@ -101,7 +104,7 @@ class TripViewSetTestCase(APITestCase):
 
         actual = res.json()
 
-        expected_data = getattr(self, f'trip{trip_number}_json')
+        expected_data = getattr(self, f'get_trip{trip_number}_json')(res.wsgi_request)
         expected = json.dumps(expected_data)
 
         self.assertJSONEqual(expected, actual)
@@ -118,9 +121,10 @@ class TripViewSetTestCase(APITestCase):
         # Check response
         actual = res.json()
         self.assertIn('pk', actual.keys())
-        actual.pop('pk')
+        pk = actual.pop('pk')
 
         expected_data = json.dumps({
+            'url': reverse('trip-detail', kwargs={'pk': pk}, request=res.wsgi_request),
             'name': trip_name,
             'creator': self.get_user_json(user),
             'members': [
@@ -157,9 +161,10 @@ class TripViewSetTestCase(APITestCase):
         # Check response
         actual = res.json()
         self.assertIn('pk', actual.keys())
-        actual.pop('pk')
+        pk = actual.pop('pk')
 
         expected_data = json.dumps({
+            'url': reverse('trip-detail', kwargs={'pk': pk}, request=res.wsgi_request),
             'name': trip_name,
             'creator': self.get_user_json(self.creator),
             'members': [
@@ -383,3 +388,14 @@ class TripViewSetTestCase(APITestCase):
         res = self.client.post(url, data)
         self.assertEqual(res.status_code, 400)
         self.assertDictEqual(res.json(), {'member_pks': ['Ensure this field has no more than 100 elements.']})
+
+    def test__cannot_remove_yourself_from_trip(self):
+        self.client.force_authenticate(user=self.creator)
+        url = self.get_remove_members_url(self.trip1.pk)
+
+        data = {'member_pks': [self.creator.pk]}
+        res = self.client.post(url, data)
+        self.assertEqual(res.status_code, 400)
+        self.assertDictEqual(res.json(), {'member_pks': ['Cannot remove yourself from trip.']})
+
+        self.assertIn(self.creator, self.trip1.members.all())

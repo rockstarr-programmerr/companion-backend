@@ -16,9 +16,12 @@ Including another URLconf
 from django.urls import path, include
 from django.conf import settings
 
+from . import views, root_endpoints
+
 urlpatterns = [
-    path('users/', include('user.urls')),
-    path('split-the-bill/', include('split_the_bill.urls')),
+    path('', views.RootAPIView.as_view()),
+    path(root_endpoints.USER, include('user.urls')),
+    path(root_endpoints.SPLIT_THE_BILL, include('split_the_bill.urls')),
 ]
 
 if settings.DEBUG:

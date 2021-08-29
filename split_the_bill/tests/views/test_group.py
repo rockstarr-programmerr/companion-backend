@@ -7,6 +7,7 @@ from parameterized import parameterized
 
 from django.contrib.auth import get_user_model
 from rest_framework.test import APITestCase
+from rest_framework.reverse import reverse
 
 from split_the_bill.models import Group
 
@@ -33,10 +34,11 @@ class GroupViewSetTestCase(APITestCase):
             self.group2 = baker.make(Group, owner=self.owner)
             self.group2.members.add(self.owner, *self.members[2:])
 
-    @property
-    def group1_json(self):
+    def get_group1_json(self, request):
+        pk = self.group1.pk
         return {
-            "pk": self.group1.pk,
+            "url": reverse('group-detail', kwargs={'pk': pk}, request=request),
+            "pk": pk,
             "name": self.group1.name,
             "owner": self.get_user_json(self.owner),
             "members": [
@@ -47,10 +49,11 @@ class GroupViewSetTestCase(APITestCase):
             "create_time": self.group1_create_time
         }
 
-    @property
-    def group2_json(self):
+    def get_group2_json(self, request):
+        pk = self.group2.pk
         return {
-            "pk": self.group2.pk,
+            "url": reverse('group-detail', kwargs={'pk': pk}, request=request),
+            "pk": pk,
             "name": self.group2.name,
             "owner": self.get_user_json(self.owner),
             "members": [
@@ -76,8 +79,8 @@ class GroupViewSetTestCase(APITestCase):
 
         actual = res.json()
         expected = json.dumps([
-            self.group1_json,
-            self.group2_json,
+            self.get_group1_json(res.wsgi_request),
+            self.get_group2_json(res.wsgi_request),
         ])
 
         self.assertJSONEqual(expected, actual)
@@ -95,7 +98,7 @@ class GroupViewSetTestCase(APITestCase):
 
         actual = res.json()
 
-        expected_data = getattr(self, f'group{group_number}_json')
+        expected_data = getattr(self, f'get_group{group_number}_json')(res.wsgi_request)
         expected = json.dumps(expected_data)
 
         self.assertJSONEqual(expected, actual)
@@ -111,10 +114,11 @@ class GroupViewSetTestCase(APITestCase):
 
         # Check response
         actual = res.json()
-        self.assertIn('pk', actual.keys())
-        actual.pop('pk')
+        pk = actual.get('pk')
 
         expected_data = json.dumps({
+            'url': reverse('group-detail', kwargs={'pk': pk}, request=res.wsgi_request),
+            'pk': pk,
             'name': group_name,
             'owner': self.get_user_json(user),
             'members': [
@@ -151,9 +155,11 @@ class GroupViewSetTestCase(APITestCase):
         # Check response
         actual = res.json()
         self.assertIn('pk', actual.keys())
-        actual.pop('pk')
+        pk = actual.get('pk')
 
         expected_data = json.dumps({
+            'url': reverse('group-detail', kwargs={'pk': pk}, request=res.wsgi_request),
+            'pk': pk,
             'name': group_name,
             'owner': self.get_user_json(self.owner),
             'members': [

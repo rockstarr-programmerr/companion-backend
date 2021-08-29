@@ -22,9 +22,9 @@ class TripViewSet(ModelViewSet):
             members=[creator]  # Auto add `creator` as first member
         )
 
-    @action(methods=['POST'], detail=True, url_path='add-members')
+    @action(methods=['POST'], detail=True, url_path='add-members', url_name='add-members', serializer_class=AddMembersSerializer)
     def add_members(self, request, pk):
-        serializer = AddMembersSerializer(data=request.data)
+        serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
         member_pks = serializer.validated_data['member_pks']
@@ -33,9 +33,9 @@ class TripViewSet(ModelViewSet):
 
         return Response()
 
-    @action(methods=['POST'], detail=True, url_path='remove-members')
+    @action(methods=['POST'], detail=True, url_path='remove-members', serializer_class=RemoveMembersSerializer)
     def remove_members(self, request, pk):
-        serializer = RemoveMembersSerializer(data=request.data)
+        serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
         member_pks = serializer.validated_data['member_pks']

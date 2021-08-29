@@ -52,9 +52,19 @@ env = environ.Env(
 
 ### Browsable API
 You can login to the browsable API and explore it to help with development.
-Go to this URL in your brower, login with one of the user you created.
+#### Create user
+Open django shell and create user
 ```
-http://localhost:8000/api-auth/
+python manage.py shell
+
+>>> from django.contrib.auth import get_user_model
+>>> get_user_model().objects.create_user(<your username>, password=<your password>)
+>>> exit()
+```
+
+Go to this URL in your brower, login with the user you created.
+```
+http://localhost:8000/api-auth/login/
 ```
 
 ### Test

@@ -1,1 +1,1 @@
-from .user import UserViewSet, Register
+from .user import UserViewSet
