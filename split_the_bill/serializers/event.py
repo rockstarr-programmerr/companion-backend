@@ -1,18 +1,19 @@
-from django.http import request
 from rest_framework import serializers
 from django.utils.translation import gettext as _
 
 from split_the_bill.models import Event
 from .user import UserSerializer
+from .fund import FundSerializer
 
 
 class EventSerializer(serializers.HyperlinkedModelSerializer):
     creator = UserSerializer(read_only=True)
     members = UserSerializer(many=True, read_only=True)
+    fund = FundSerializer(read_only=True)
 
     class Meta:
         model = Event
-        fields = ['url', 'pk', 'name', 'creator', 'members', 'create_time']
+        fields = ['url', 'pk', 'name', 'creator', 'members', 'fund', 'create_time']
 
 
 class _PkListField(serializers.ListField):

@@ -3,11 +3,15 @@ from rest_framework.viewsets import ModelViewSet
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
+from django.utils.decorators import method_decorator
+from django.db import transaction
+
 from split_the_bill.serializers.event import AddMembersSerializer, RemoveMembersSerializer, EventSerializer
 from split_the_bill.permissions import IsEventCreatorOrReadonly
 from split_the_bill.models import Event
 
 
+@method_decorator(transaction.atomic, 'post')
 class EventViewSet(ModelViewSet):
     serializer_class = EventSerializer
     permission_classes = [IsEventCreatorOrReadonly]
