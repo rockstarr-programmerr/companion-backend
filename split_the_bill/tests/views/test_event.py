@@ -413,3 +413,30 @@ class EventViewSetTestCase(APITestCase):
         self.assertDictEqual(res.json(), {'member_pks': ['Cannot remove yourself from event.']})
 
         self.assertIn(self.creator, self.event1.members.all())
+
+    def test__members__cannot__add_members(self):
+        member = self.event1.members.exclude(pk=self.creator.pk).first()
+        self.client.force_authenticate(user=member)
+
+        url = self.get_add_members_url(self.event1.pk)
+        data = {'member_pks': [1000]}
+        res = self.client.post(url, data)
+        self.assertEqual(res.status_code, 403)
+
+        pks = [member.pk for member in self.event1.members.all()]
+        self.assertNotIn(1000, pks)
+
+    def test__members__cannot__remove_members(self):
+        members_before = self.event1.members.exclude(pk=self.creator.pk)
+        member = members_before.first()
+
+        self.client.force_authenticate(user=member)
+
+        url = self.get_remove_members_url(self.event1.pk)
+        data = {'member_pks': [m.pk for m in members_before if m != member]}
+        res = self.client.post(url, data)
+        self.assertEqual(res.status_code, 403)
+
+        members_after = self.event1.members.all()
+        for member in members_before:
+            self.assertIn(member, members_after)

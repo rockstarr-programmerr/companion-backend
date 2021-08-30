@@ -1,4 +1,5 @@
-from rest_framework.permissions import IsAuthenticated, SAFE_METHODS
+from django.utils.translation import gettext_lazy as _
+from rest_framework.permissions import SAFE_METHODS, IsAuthenticated
 
 
 class _IsCreatorOrReadonly(IsAuthenticated):
@@ -13,7 +14,16 @@ class _IsCreatorOrReadonly(IsAuthenticated):
 
 class IsGroupOwnerOrReadonly(_IsCreatorOrReadonly):
     creator_field_name = 'owner'
+    message = _('Only group owner has permission for this.')
 
 
 class IsEventCreatorOrReadonly(_IsCreatorOrReadonly):
     creator_field_name = 'creator'
+    message = _('Only event creator has permission for this.')
+
+
+class IsEventMembers(IsAuthenticated):
+    message = _('Only event members can execute this action.')
+
+    def has_object_permission(self, request, view, event):
+        return request.user in event.members.all()
