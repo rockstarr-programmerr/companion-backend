@@ -11,6 +11,6 @@ class CompanionTestCase(APITestCase):
         user = baker.make(User)
         self.client.force_authenticate(user=user)
 
-        res = self.client.post('/split-the-bill/trips/', **{'HTTP_ACCEPT_LANGUAGE': 'vi'})
+        res = self.client.post('/split-the-bill/events/', **{'HTTP_ACCEPT_LANGUAGE': 'vi'})
         data = res.json()
         self.assertListEqual(data['name'], ['Trường này là bắt buộc.'])

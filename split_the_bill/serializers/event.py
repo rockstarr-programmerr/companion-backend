@@ -2,16 +2,16 @@ from django.http import request
 from rest_framework import serializers
 from django.utils.translation import gettext as _
 
-from split_the_bill.models import Trip
+from split_the_bill.models import Event
 from .user import UserSerializer
 
 
-class TripSerializer(serializers.HyperlinkedModelSerializer):
+class EventSerializer(serializers.HyperlinkedModelSerializer):
     creator = UserSerializer(read_only=True)
     members = UserSerializer(many=True, read_only=True)
 
     class Meta:
-        model = Trip
+        model = Event
         fields = ['url', 'pk', 'name', 'creator', 'members', 'create_time']
 
 
@@ -29,5 +29,5 @@ class RemoveMembersSerializer(serializers.Serializer):
     def validate_member_pks(self, pks):
         request = self.context['request']
         if request.user.pk in pks:
-            raise serializers.ValidationError(_('Cannot remove yourself from trip.'))
+            raise serializers.ValidationError(_('Cannot remove yourself from event.'))
         return pks

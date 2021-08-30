@@ -15,5 +15,5 @@ class IsGroupOwnerOrReadonly(_IsCreatorOrReadonly):
     creator_field_name = 'owner'
 
 
-class IsTripCreatorOrReadonly(_IsCreatorOrReadonly):
+class IsEventCreatorOrReadonly(_IsCreatorOrReadonly):
     creator_field_name = 'creator'

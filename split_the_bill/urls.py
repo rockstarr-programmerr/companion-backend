@@ -1,4 +1,3 @@
-from django.urls import path
 from rest_framework.routers import DefaultRouter
 
 from split_the_bill import views
@@ -14,7 +13,7 @@ urlpatterns = [
 ]
 
 router = DefaultRouter()
-router.register('trips', views.TripViewSet, basename='trip')
+router.register('events', views.EventViewSet, basename='event')
 router.register('groups', views.GroupViewSet, basename='group')
 
 urlpatterns.extend(router.urls)

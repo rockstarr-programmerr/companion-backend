@@ -3,17 +3,17 @@ from rest_framework.viewsets import ModelViewSet
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
-from split_the_bill.serializers.trip import AddMembersSerializer, RemoveMembersSerializer, TripSerializer
-from split_the_bill.permissions import IsTripCreatorOrReadonly
-from split_the_bill.models import Trip
+from split_the_bill.serializers.event import AddMembersSerializer, RemoveMembersSerializer, EventSerializer
+from split_the_bill.permissions import IsEventCreatorOrReadonly
+from split_the_bill.models import Event
 
 
-class TripViewSet(ModelViewSet):
-    serializer_class = TripSerializer
-    permission_classes = [IsTripCreatorOrReadonly]
+class EventViewSet(ModelViewSet):
+    serializer_class = EventSerializer
+    permission_classes = [IsEventCreatorOrReadonly]
 
     def get_queryset(self):
-        return self.request.user.trips_participated.all()
+        return self.request.user.events_participated.all()
 
     def perform_create(self, serializer):
         creator = self.request.user
@@ -28,8 +28,8 @@ class TripViewSet(ModelViewSet):
         serializer.is_valid(raise_exception=True)
 
         member_pks = serializer.validated_data['member_pks']
-        trip = get_object_or_404(Trip, pk=pk)
-        trip.members.add(*member_pks)
+        event = get_object_or_404(Event, pk=pk)
+        event.members.add(*member_pks)
 
         return Response()
 
@@ -39,7 +39,7 @@ class TripViewSet(ModelViewSet):
         serializer.is_valid(raise_exception=True)
 
         member_pks = serializer.validated_data['member_pks']
-        trip = get_object_or_404(Trip, pk=pk)
-        trip.members.remove(*member_pks)
+        event = get_object_or_404(Event, pk=pk)
+        event.members.remove(*member_pks)
 
         return Response()

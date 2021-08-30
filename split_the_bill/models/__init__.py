@@ -1,2 +1,2 @@
 from .group import Group
-from .trip import Trip
+from .event import Event

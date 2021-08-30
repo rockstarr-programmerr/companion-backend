@@ -1,2 +1,2 @@
-from .trip import TripViewSet
+from .event import EventViewSet
 from .group import GroupViewSet
