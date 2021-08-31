@@ -1,6 +1,8 @@
 import json
+from datetime import timedelta
 
 from django.contrib.auth import get_user_model
+from django.utils import timezone
 from faker import Faker
 from freezegun import freeze_time
 from model_bakery import baker
@@ -8,7 +10,7 @@ from parameterized import parameterized
 from rest_framework.reverse import reverse
 from rest_framework.test import APITestCase
 
-from split_the_bill.models import Event
+from split_the_bill.models import Event, Transaction
 
 fake = Faker()
 User = get_user_model()
@@ -64,7 +66,14 @@ class _EventViewSetTestCase(APITestCase):
         }
 
     @staticmethod
-    def get_user_json(user):
+    def get_user_json(user_or_pk):
+        if not user_or_pk:
+            return None
+        elif isinstance(user_or_pk, int):
+            user = User.objects.get(pk=user_or_pk)
+        else:
+            user = user_or_pk
+
         return {
             'pk': user.pk,
             'username': user.username,
@@ -513,5 +522,81 @@ class EventAddRemoveMembersTestCase(_EventViewSetTestCase):
         self.assertNotIn(member, self.event1.members.all())
 
 
-# class EventAddRemoveTransactionTestCase(_EventViewSetTestCase):
-#     ...
+class EventAddRemoveTransactionTestCase(_EventViewSetTestCase):
+    CREATOR_PK = 5426432
+    MEMBER_1_PK = 874437
+    MEMBER_2_PK = 76493273
+
+    def setUp(self):
+        super().setUp()
+        self.creator = baker.make(User, pk=self.CREATOR_PK)
+        self.member_1 = baker.make(User, pk=self.MEMBER_1_PK)
+        self.member_2 = baker.make(User, pk=self.MEMBER_2_PK)
+        self.event = baker.make(Event, creator=self.creator)
+        self.event.members.add(self.creator, self.member_1, self.member_2)
+
+    @parameterized.expand([
+        ['user_to_user', MEMBER_1_PK, MEMBER_2_PK, False, False, False],
+        ['user_to_user', CREATOR_PK, MEMBER_1_PK, False, False, False],
+        ['user_to_user', CREATOR_PK, MEMBER_2_PK, False, False, False],
+
+        ['user_to_fund', CREATOR_PK, None, True, False, False],
+        ['user_to_fund', MEMBER_1_PK, None, True, False, False],
+        ['user_to_fund', MEMBER_2_PK, None, True, False, False],
+
+        ['fund_to_user', None, CREATOR_PK, False, True, False],
+        ['fund_to_user', None, MEMBER_1_PK, False, True, False],
+        ['fund_to_user', None, MEMBER_2_PK, False, True, False],
+
+        ['user_expense', CREATOR_PK, None, False, False, True],
+        ['user_expense', MEMBER_1_PK, None, False, False, True],
+        ['user_expense', MEMBER_2_PK, None, False, False, True],
+
+        ['fund_expense', None, None, False, True, True],
+    ])
+    def test__add_transaction(
+        self, transaction_type, from_user, to_user,
+        expected_is_deposit, expected_is_withdrawal, expected_is_expense
+    ):
+        self.client.force_authenticate(user=self.creator)
+        url = f'{URL}{self.event.pk}/add-transaction/'
+        data = {
+            'transaction_type': transaction_type,
+            'from_user': from_user,
+            'to_user': to_user,
+        }
+        now = timezone.now()
+        res = self.client.post(url, data)
+        self.assertEqual(res.status_code, 200)
+
+        # Test response
+        actual = res.json()
+        pk = actual.get('pk')
+        expected = json.dumps({
+            'pk': pk,
+            'transaction_type': transaction_type,
+            'from_user': self.get_user_json(from_user),
+            'to_user': self.get_user_json(to_user),
+        })
+        self.assertJSONEqual(expected, actual)
+
+        # Test DB
+        transaction = Transaction.objects.get(pk=pk)
+        self.assertEqual(getattr(transaction.from_user, 'pk', None), from_user)
+        self.assertEqual(getattr(transaction.to_user, 'pk', None), to_user)
+        self.assertEqual(transaction.is_deposit, expected_is_deposit)
+        self.assertEqual(transaction.is_withdrawal, expected_is_withdrawal)
+        self.assertEqual(transaction.is_expense, expected_is_expense)
+        self.assertAlmostEqual(transaction.create_time, now, delta=timedelta(seconds=5))
+        self.assertAlmostEqual(transaction.update_time, now, delta=timedelta(seconds=5))
+
+    def test__remove_transaction(self):
+        transaction = baker.make(Transaction, event=self.event)
+
+        self.client.force_authenticate(user=self.creator)
+        url = f'{URL}{self.event.pk}/remove-transaction/'
+        data = {'transaction_pk': transaction.pk}
+        res = self.client.post(url, data)
+
+        self.assertEqual(res.status_code, 204)
+        self.assertFalse(Transaction.objects.filter(pk=transaction.pk).exists())
