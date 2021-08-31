@@ -1,5 +1,3 @@
-from django.db import transaction
-from django.utils.decorators import method_decorator
 from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.generics import get_object_or_404
@@ -17,7 +15,6 @@ from split_the_bill.serializers.transaction import (
     TransactionSerializer)
 
 
-@method_decorator(transaction.atomic, 'dispatch')
 class EventViewSet(ModelViewSet):
     serializer_class = EventSerializer
     permission_classes = [IsEventCreatorOrReadonly]
