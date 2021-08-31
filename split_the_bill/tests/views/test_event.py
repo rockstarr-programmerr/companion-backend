@@ -45,7 +45,6 @@ class _EventViewSetTestCase(APITestCase):
                 self.get_user_json(self.members[0]),
                 self.get_user_json(self.members[1]),
             ],
-            'fund': self.get_fund_json(),
             'create_time': EVENT1_CREATE_TIME
         }
 
@@ -61,7 +60,6 @@ class _EventViewSetTestCase(APITestCase):
                 self.get_user_json(self.members[2]),
                 self.get_user_json(self.members[3]),
             ],
-            'fund': self.get_fund_json(),
             'create_time': EVENT2_CREATE_TIME
         }
 
@@ -71,12 +69,6 @@ class _EventViewSetTestCase(APITestCase):
             'pk': user.pk,
             'username': user.username,
             'email': user.email,
-        }
-
-    @staticmethod
-    def get_fund_json(balance=0):
-        return {
-            'balance': balance
         }
 
     @staticmethod
@@ -204,7 +196,6 @@ class EventCreateTestCase(_EventViewSetTestCase):
             'members': [
                 self.get_user_json(user),
             ],
-            'fund': self.get_fund_json(),
             'create_time': DEFAULT_TIME
         })
 
@@ -266,7 +257,6 @@ class EventUpdateTestCase(_EventViewSetTestCase):
                 self.get_user_json(self.members[0]),
                 self.get_user_json(self.members[1]),
             ],
-            'fund': self.get_fund_json(),
             'create_time': EVENT1_CREATE_TIME
         })
 
@@ -521,3 +511,7 @@ class EventAddRemoveMembersTestCase(_EventViewSetTestCase):
         res = self.client.post(url, data)
         self.assertEqual(res.status_code, 200)
         self.assertNotIn(member, self.event1.members.all())
+
+
+# class EventAddRemoveTransactionTestCase(_EventViewSetTestCase):
+#     ...

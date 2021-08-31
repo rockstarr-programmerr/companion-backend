@@ -4,18 +4,16 @@ from rest_framework import serializers
 from split_the_bill.models import Event
 
 from ._common import PkField
-from .fund import FundSerializer
 from .user import UserSerializer
 
 
 class EventSerializer(serializers.HyperlinkedModelSerializer):
     creator = UserSerializer(read_only=True)
     members = UserSerializer(many=True, read_only=True)
-    fund = FundSerializer(read_only=True)
 
     class Meta:
         model = Event
-        fields = ['url', 'pk', 'name', 'creator', 'members', 'fund', 'create_time']
+        fields = ['url', 'pk', 'name', 'creator', 'members', 'create_time']
 
 
 class _PkListField(serializers.ListField):
