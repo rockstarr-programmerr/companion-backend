@@ -1,67 +1,68 @@
 import json
-from model_bakery import baker
-from faker import Faker
-from freezegun import freeze_time
-from parameterized import parameterized
-
 
 from django.contrib.auth import get_user_model
-from rest_framework.test import APITestCase
+from faker import Faker
+from freezegun import freeze_time
+from model_bakery import baker
+from parameterized import parameterized
 from rest_framework.reverse import reverse
+from rest_framework.test import APITestCase
 
 from split_the_bill.models import Event
 
 fake = Faker()
 User = get_user_model()
-default_time = '2021-08-23T08:13:16.276029Z'
+
+URL = '/split-the-bill/events/'
+EVENT1_CREATE_TIME = '2021-08-21T08:13:16.276029Z'
+EVENT2_CREATE_TIME = '2021-08-22T08:13:16.276029Z'
+DEFAULT_TIME = '2021-08-23T08:13:16.276029Z'
 
 
-class EventViewSetTestCase(APITestCase):
-    url = '/split-the-bill/events/'
-    event1_create_time = '2021-08-21T08:13:16.276029Z'
-    event2_create_time = '2021-08-22T08:13:16.276029Z'
-
+class _EventViewSetTestCase(APITestCase):
     def setUp(self):
         super().setUp()
         self.creator = baker.make(User)
         self.members = baker.make(User, _quantity=4)
 
-        with freeze_time(self.event1_create_time):
+        with freeze_time(EVENT1_CREATE_TIME):
             self.event1 = baker.make(Event, creator=self.creator)
             self.event1.members.add(self.creator, *self.members[:2])
 
-        with freeze_time(self.event2_create_time):
+        with freeze_time(EVENT2_CREATE_TIME):
             self.event2 = baker.make(Event, creator=self.creator)
             self.event2.members.add(self.creator, *self.members[2:])
 
     def get_event1_json(self, request):
         pk = self.event1.pk
         return {
-            "url": reverse('event-detail', kwargs={'pk': pk}, request=request),
-            "pk": pk,
-            "name": self.event1.name,
-            "creator": self.get_user_json(self.creator),
-            "members": [
+            'url': reverse('event-detail', kwargs={'pk': pk}, request=request),
+            'pk': pk,
+            'name': self.event1.name,
+            'creator': self.get_user_json(self.creator),
+            'members': [
                 self.get_user_json(self.creator),
                 self.get_user_json(self.members[0]),
                 self.get_user_json(self.members[1]),
             ],
-            "create_time": self.event1_create_time
+            'fund': self.get_fund_json(),
+            'create_time': EVENT1_CREATE_TIME
         }
 
     def get_event2_json(self, request):
         pk = self.event2.pk
         return {
-            "url": reverse('event-detail', kwargs={'pk': pk}, request=request),
-            "pk": pk,
-            "name": self.event2.name,
-            "creator": self.get_user_json(self.creator),
-            "members": [
+            'url': reverse('event-detail', kwargs={'pk': pk}, request=request),
+            'pk': pk,
+            'name': self.event2.name,
+            'creator': self.get_user_json(self.creator),
+            'members': [
                 self.get_user_json(self.creator),
                 self.get_user_json(self.members[2]),
                 self.get_user_json(self.members[3]),
             ],
-            "create_time": self.event2_create_time
+            'fund': self.get_fund_json(),
+            'create_time': EVENT2_CREATE_TIME
         }
 
     @staticmethod
@@ -70,6 +71,12 @@ class EventViewSetTestCase(APITestCase):
             'pk': user.pk,
             'username': user.username,
             'email': user.email,
+        }
+
+    @staticmethod
+    def get_fund_json(balance=0):
+        return {
+            'balance': balance
         }
 
     @staticmethod
@@ -85,14 +92,16 @@ class EventViewSetTestCase(APITestCase):
         }
 
     def get_add_members_url(self, pk):
-        return f'{self.url}{pk}/add-members/'
+        return f'{URL}{pk}/add-members/'
 
     def get_remove_members_url(self, pk):
-        return f'{self.url}{pk}/remove-members/'
+        return f'{URL}{pk}/remove-members/'
 
+
+class EventReadTestCase(_EventViewSetTestCase):
     def test__get_list(self):
         self.client.force_authenticate(user=self.creator)
-        res = self.client.get(self.url)
+        res = self.client.get(URL)
         self.assertEqual(res.status_code, 200)
 
         actual = res.json()
@@ -112,7 +121,7 @@ class EventViewSetTestCase(APITestCase):
         self.client.force_authenticate(user=self.creator)
 
         pk = getattr(self, f'event{event_number}').pk
-        res = self.client.get(f'{self.url}{pk}/')
+        res = self.client.get(f'{URL}{pk}/')
         self.assertEqual(res.status_code, 200)
 
         actual = res.json()
@@ -122,13 +131,65 @@ class EventViewSetTestCase(APITestCase):
 
         self.assertJSONEqual(expected, actual)
 
-    @freeze_time(default_time)
+    def test__get_list_permission(self):
+        """
+        Creator and member can only see list of their events
+        """
+        creator = baker.make(User)
+        member = baker.make(User)
+        event3 = baker.make(Event, creator=creator)
+        event3.members.add(creator, member)
+
+        for user in [creator, member]:
+            self.client.force_authenticate(user=user)
+            res = self.client.get(URL)
+            data = res.json()
+            results = data['results']
+
+            self.assertEqual(len(results), 1)
+            pks = [event['pk'] for event in results]
+            self.assertNotIn(self.event1.pk, pks)
+            self.assertNotIn(self.event2.pk, pks)
+            self.assertIn(event3.pk, pks)
+
+        # Unauthenticated user cannot access
+        self.client.force_authenticate(user=None)
+        res = self.client.get(URL)
+        self.assertEqual(res.status_code, 401)
+
+    def test__get_detail_permission(self):
+        """
+        Creator and member can only see detail of their events
+        """
+        creator = baker.make(User)
+        member = baker.make(User)
+        event3 = baker.make(Event, creator=creator)
+        event3.members.add(creator, member)
+        event3_url = f'{URL}{event3.pk}/'
+
+        for user in [creator, member]:
+            self.client.force_authenticate(user=user)
+            res = self.client.get(event3_url)
+            self.assertEqual(res.status_code, 200)
+
+            for event in [self.event1, self.event2]:
+                res = self.client.get(f'{URL}{event.pk}/')
+                self.assertEqual(res.status_code, 404)
+
+        # Unauthenticated user cannot access
+        self.client.force_authenticate(user=None)
+        res = self.client.get(event3_url)
+        self.assertEqual(res.status_code, 401)
+
+
+class EventCreateTestCase(_EventViewSetTestCase):
+    @freeze_time(DEFAULT_TIME)
     def test__post(self):
         event_name = fake.text(max_nb_chars=150)
         user = baker.make(User)
         self.client.force_authenticate(user=user)
 
-        res = self.client.post(self.url, {'name': event_name})
+        res = self.client.post(URL, {'name': event_name})
         self.assertEqual(res.status_code, 201)
 
         # Check response
@@ -143,7 +204,8 @@ class EventViewSetTestCase(APITestCase):
             'members': [
                 self.get_user_json(user),
             ],
-            'create_time': default_time
+            'fund': self.get_fund_json(),
+            'create_time': DEFAULT_TIME
         })
 
         self.assertJSONEqual(expected_data, actual)
@@ -158,16 +220,35 @@ class EventViewSetTestCase(APITestCase):
         self.assertEqual(len(members), 1)
         self.assertIn(user, members)
 
+    def test__post_permission(self):
+        """
+        Only authenticated user can create event
+        """
+        event_name = fake.text(max_nb_chars=150)
+        user = baker.make(User)
+
+        res = self.client.post(URL, {'name': event_name})
+        self.assertEqual(res.status_code, 401)
+        self.assertFalse(Event.objects.filter(name=event_name).exists())
+
+        self.client.force_authenticate(user=user)
+        res = self.client.post(URL, {'name': event_name})
+        self.assertEqual(res.status_code, 201)
+        self.assertTrue(Event.objects.filter(name=event_name).exists())
+
+
+class EventUpdateTestCase(_EventViewSetTestCase):
     @parameterized.expand([
         ['put'],
         ['patch'],
     ])
     def test__put_and_patch(self, method):
-        self.client.force_authenticate(user=self.creator)
         event_name = fake.text(max_nb_chars=150)
 
-        url = f'{self.url}{self.event1.pk}/'
+        url = f'{URL}{self.event1.pk}/'
         req_method = getattr(self.client, method)
+
+        self.client.force_authenticate(user=self.creator)
         res = req_method(url, {'name': event_name})
         self.assertEqual(res.status_code, 200)
 
@@ -185,7 +266,8 @@ class EventViewSetTestCase(APITestCase):
                 self.get_user_json(self.members[0]),
                 self.get_user_json(self.members[1]),
             ],
-            'create_time': self.event1_create_time
+            'fund': self.get_fund_json(),
+            'create_time': EVENT1_CREATE_TIME
         })
 
         self.assertJSONEqual(expected_data, actual)
@@ -200,126 +282,11 @@ class EventViewSetTestCase(APITestCase):
         self.assertEqual(len(members), 3)
         self.assertIn(self.creator, members)
 
-    def test__delete(self):
-        self.client.force_authenticate(user=self.creator)
-
-        url = f'{self.url}{self.event1.pk}/'
-        res = self.client.delete(url)
-        self.assertEqual(res.status_code, 204)
-        self.assertFalse(Event.objects.filter(pk=self.event1.pk).exists())
-
-    def test__get_list_permission(self):
-        user = baker.make(User)
-        event3 = baker.make(Event, creator=user)
-        event3.members.add(user)
-
-        self.client.force_authenticate(user=user)
-        res = self.client.get(self.url)
-        data = res.json()
-        results = data['results']
-
-        self.assertEqual(len(results), 1)
-        pks = [event['pk'] for event in results]
-        self.assertNotIn(self.event1.pk, pks)
-        self.assertNotIn(self.event2.pk, pks)
-        self.assertIn(event3.pk, pks)
-
-    def test__get_detail_permission(self):
-        user = baker.make(User)
-        event3 = baker.make(Event, creator=user)
-        event3.members.add(user)
-
-        event3_url = f'{self.url}{event3.pk}/'
-        self.client.force_authenticate(user=user)
-        res = self.client.get(event3_url)
-        self.assertEqual(res.status_code, 200)
-
-        for index, member in enumerate(self.members):
-            self.client.force_authenticate(user=member)
-            res = self.client.get(event3_url)
-            self.assertEqual(res.status_code, 404)
-
-            res1 = self.client.get(f'{self.url}{self.event1.pk}/')
-            res2 = self.client.get(f'{self.url}{self.event2.pk}/')
-            if index in [0, 1]:
-                self.assertEqual(res1.status_code, 200)
-                self.assertEqual(res2.status_code, 404)
-            else:
-                self.assertEqual(res1.status_code, 404)
-                self.assertEqual(res2.status_code, 200)
-
-        for event in [self.event1, self.event2]:
-            self.client.force_authenticate(user=user)
-            res = self.client.get(f'{self.url}{event.pk}/')
-            self.assertEqual(res.status_code, 404)
-
     @parameterized.expand([
         ['put'],
         ['patch'],
     ])
-    def test__put_and_patch_permission(self, method):
-        event_name = fake.text(max_nb_chars=150)
-        user = baker.make(User)
-        event3 = baker.make(Event, creator=user)
-        event3.members.add(user)
-
-        self.client.force_authenticate(user=user)
-        req_method = getattr(self.client, method)
-        res = req_method(f'{self.url}{event3.pk}/', {'name': event_name})
-        self.assertEqual(res.status_code, 200)
-
-        for event in [self.event1, self.event2]:
-            res = req_method(f'{self.url}{event.pk}/', {'name': event_name})
-            self.assertEqual(res.status_code, 404)
-
-        for index, member in enumerate(self.members):
-            self.client.force_authenticate(user=member)
-            res1 = req_method(f'{self.url}{self.event1.pk}/', {'name': event_name})
-            res2 = req_method(f'{self.url}{self.event2.pk}/', {'name': event_name})
-
-            if index in [0, 1]:
-                self.assertEqual(res1.status_code, 403)
-                self.assertEqual(res2.status_code, 404)
-            else:
-                self.assertEqual(res1.status_code, 404)
-                self.assertEqual(res2.status_code, 403)
-
-    def test__delete_permission(self):
-        user = baker.make(User)
-        event3 = baker.make(Event, creator=user)
-        event3.members.add(user)
-
-        self.client.force_authenticate(user=user)
-        res = self.client.delete(f'{self.url}{event3.pk}/')
-        self.assertEqual(res.status_code, 204)
-
-        for event in [self.event1, self.event2]:
-            res = self.client.delete(f'{self.url}{event.pk}/')
-            self.assertEqual(res.status_code, 404)
-
-        for member in self.event1.members.all():
-            if self.event1.is_creator(member):
-                continue
-
-            self.client.force_authenticate(user=member)
-            res = self.client.delete(f'{self.url}{self.event1.pk}/')
-            self.assertEqual(res.status_code, 403)
-
-    @parameterized.expand([
-        ['get', url],
-        ['get', url + '1/'],
-        ['post', url + '1/'],
-        ['put', url + '1/'],
-        ['patch', url + '1/'],
-        ['delete', url + '1/'],
-    ])
-    def test__unauthenticated_user_cannot_access(self, method, url):
-        self.client.force_authenticate(user=None)
-        req_method = getattr(self.client, method)
-        res = req_method(url)
-        self.assertEqual(res.status_code, 401)
-
-    def test__cannot_update_creator(self):
+    def test__cannot_update_creator(self, method):
         self.client.force_authenticate(user=self.creator)
         user = baker.make(User)
 
@@ -328,13 +295,105 @@ class EventViewSetTestCase(APITestCase):
             'name': name,
             'creator': user.pk
         }
-        self.client.patch(f'{self.url}{self.event1.pk}/', data)
+        req_method = getattr(self.client, method)
+        req_method(f'{URL}{self.event1.pk}/', data)
 
         self.event1.refresh_from_db()
         self.assertEqual(self.event1.name, name)
         self.assertEqual(self.event1.creator, self.creator)
         self.assertNotEqual(self.event1.creator, user)
 
+    @parameterized.expand([
+        ['put'],
+        ['patch'],
+    ])
+    def test__put_and_patch_permission(self, method):
+        """
+        Only creator can update their event
+        """
+        event_name = fake.text(max_nb_chars=150)
+        creator = baker.make(User)
+        member = baker.make(User)
+        event3 = baker.make(Event, creator=creator)
+        event3.members.add(creator, member)
+        req_method = getattr(self.client, method)
+
+        # Unauthenticated user cannot access
+        res = req_method(f'{URL}{event3.pk}/', {'name': event_name})
+        self.assertEqual(res.status_code, 401)
+        event3.refresh_from_db()
+        self.assertNotEqual(event3.name, event_name)
+
+        # Member cannot update event
+        self.client.force_authenticate(user=member)
+        req_method = getattr(self.client, method)
+        res = req_method(f'{URL}{event3.pk}/', {'name': event_name})
+        self.assertEqual(res.status_code, 403)
+        event3.refresh_from_db()
+        self.assertNotEqual(event3.name, event_name)
+
+        # Cannot update other events
+        for user in [creator, member]:
+            self.client.force_authenticate(user=user)
+            for event in [self.event1, self.event2]:
+                res = req_method(f'{URL}{event.pk}/', {'name': event_name})
+                self.assertEqual(res.status_code, 404)
+                event.refresh_from_db()
+                self.assertNotEqual(event.name, event_name)
+
+        # Creator can update
+        self.client.force_authenticate(user=creator)
+        res = req_method(f'{URL}{event3.pk}/', {'name': event_name})
+        self.assertEqual(res.status_code, 200)
+        event3.refresh_from_db()
+        self.assertEqual(event3.name, event_name)
+
+
+class EventDeleteTestCase(_EventViewSetTestCase):
+    def test__delete(self):
+        self.client.force_authenticate(user=self.creator)
+
+        url = f'{URL}{self.event1.pk}/'
+        res = self.client.delete(url)
+        self.assertEqual(res.status_code, 204)
+        self.assertFalse(Event.objects.filter(pk=self.event1.pk).exists())
+
+    def test__delete_permission(self):
+        """
+        Only creator can delete event
+        """
+        creator = baker.make(User)
+        member = baker.make(User)
+        event3 = baker.make(Event, creator=creator)
+        event3.members.add(creator, member)
+
+        # Unauthenticated user cannot access
+        res = self.client.delete(f'{URL}{event3.pk}/')
+        self.assertEqual(res.status_code, 401)
+        self.assertTrue(Event.objects.filter(pk=event3.pk).exists())
+
+        # Member cannot delete event
+        self.client.force_authenticate(user=member)
+        res = self.client.delete(f'{URL}{event3.pk}/')
+        self.assertEqual(res.status_code, 403)
+        self.assertTrue(Event.objects.filter(pk=event3.pk).exists())
+
+        # Cannot delete other events
+        for user in [creator, member]:
+            self.client.force_authenticate(user=user)
+            for event in [self.event1, self.event2]:
+                res = self.client.delete(f'{URL}{event.pk}/')
+                self.assertEqual(res.status_code, 404)
+                self.assertTrue(Event.objects.filter(pk=event.pk).exists())
+
+        # Creator can delete event
+        self.client.force_authenticate(user=creator)
+        res = self.client.delete(f'{URL}{event3.pk}/')
+        self.assertEqual(res.status_code, 204)
+        self.assertFalse(Event.objects.filter(pk=event3.pk).exists())
+
+
+class EventAddRemoveMembersTestCase(_EventViewSetTestCase):
     def test__add_members(self):
         self.client.force_authenticate(user=self.creator)
 
@@ -414,29 +473,51 @@ class EventViewSetTestCase(APITestCase):
 
         self.assertIn(self.creator, self.event1.members.all())
 
-    def test__members__cannot__add_members(self):
+    def test__add_members__permission(self):
+        """
+        Only creator can add members
+        """
+        new_user = baker.make(User)
+        url = self.get_add_members_url(self.event1.pk)
+        data = {'member_pks': [new_user.pk]}
+
+        # Unauthenticated user cannot access
+        res = self.client.post(url, data)
+        self.assertEqual(res.status_code, 401)
+        self.assertNotIn(new_user, self.event1.members.all())
+
+        # Member cannot add member
         member = self.event1.members.exclude(pk=self.creator.pk).first()
         self.client.force_authenticate(user=member)
-
-        url = self.get_add_members_url(self.event1.pk)
-        data = {'member_pks': [1000]}
         res = self.client.post(url, data)
         self.assertEqual(res.status_code, 403)
+        self.assertNotIn(new_user, self.event1.members.all())
 
-        pks = [member.pk for member in self.event1.members.all()]
-        self.assertNotIn(1000, pks)
+        # Creator can add member
+        self.client.force_authenticate(user=self.creator)
+        res = self.client.post(url, data)
+        self.assertEqual(res.status_code, 200)
+        self.assertIn(new_user, self.event1.members.all())
 
-    def test__members__cannot__remove_members(self):
-        members_before = self.event1.members.exclude(pk=self.creator.pk)
-        member = members_before.first()
-
-        self.client.force_authenticate(user=member)
-
+    def test__remove_members__permission(self):
         url = self.get_remove_members_url(self.event1.pk)
-        data = {'member_pks': [m.pk for m in members_before if m != member]}
+        member = self.event1.members.exclude(pk=self.creator.pk).first()
+        data = {'member_pks': [member.pk]}
+
+        # Unauthenticated user cannot access
+        res = self.client.post(url, data)
+        self.assertEqual(res.status_code, 401)
+        self.assertIn(member, self.event1.members.all())
+
+        # Member cannot remove member
+        other_member = self.event1.members.exclude(pk__in=[self.creator.pk, member.pk]).first()
+        self.client.force_authenticate(user=other_member)
         res = self.client.post(url, data)
         self.assertEqual(res.status_code, 403)
+        self.assertIn(member, self.event1.members.all())
 
-        members_after = self.event1.members.all()
-        for member in members_before:
-            self.assertIn(member, members_after)
+        # Creator can remove member
+        self.client.force_authenticate(user=self.creator)
+        res = self.client.post(url, data)
+        self.assertEqual(res.status_code, 200)
+        self.assertNotIn(member, self.event1.members.all())

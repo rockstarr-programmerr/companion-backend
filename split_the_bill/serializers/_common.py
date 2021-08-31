@@ -2,4 +2,6 @@ from rest_framework import serializers
 
 
 class PkField(serializers.IntegerField):
-    min_value = 1
+    def __init__(self, *args, **kwargs):
+        kwargs['min_value'] = 1
+        super().__init__(*args, **kwargs)
