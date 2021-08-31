@@ -3,7 +3,7 @@ from rest_framework import serializers
 
 from split_the_bill.models import Transaction
 
-from ._common import PkField
+from ._common import PkField, CustomChoiceField
 from .user import UserSerializer
 
 
@@ -21,7 +21,7 @@ class TransactionSerializer(serializers.ModelSerializer):
 
 
 class AddTransactionSerializer(serializers.Serializer):
-    transaction_type = serializers.ChoiceField(Transaction.Types.choices)
+    transaction_type = CustomChoiceField(Transaction.Types.choices)
     from_user = PkField(required=False, allow_null=True)
     to_user = PkField(required=False, allow_null=True)
 
