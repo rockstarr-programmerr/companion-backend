@@ -3,6 +3,7 @@ from datetime import timedelta
 
 from django.contrib.auth import get_user_model
 from django.utils import timezone
+from django.utils.dateparse import parse_datetime
 from faker import Faker
 from freezegun import freeze_time
 from model_bakery import baker
@@ -600,3 +601,94 @@ class EventAddRemoveTransactionTestCase(_EventViewSetTestCase):
 
         self.assertEqual(res.status_code, 204)
         self.assertFalse(Transaction.objects.filter(pk=transaction.pk).exists())
+
+
+class EventGetTransactionsTestCase(_EventViewSetTestCase):
+    NOW = '2021-07-30T14:05:26Z'
+
+    def setUp(self):
+        self.creator = baker.make(User)
+        self.member = baker.make(User)
+        self.event = baker.make(Event, creator=self.creator)
+        self.event.members.add(self.creator, self.member)
+        self.transactions = []
+
+        create_time = parse_datetime(self.NOW)
+        for _ in range(10):
+            with freeze_time(create_time):
+                transaction = baker.make(Transaction, event=self.event)
+                self.transactions.append(transaction)
+            create_time -= timedelta(hours=1)
+
+    def test__filter_transactions__response(self):
+        self.client.force_authenticate(user=self.creator)
+        url = f'{URL}{self.event.pk}/get-transactions/'
+
+        params = {
+            'start_time': '2021-07-30T14:05:26Z',
+            'end_time': '2021-07-30T14:05:26Z',
+        }
+        res = self.client.get(url, params)
+        self.assertEqual(res.status_code, 200)
+
+        actual = res.json()
+        trans = self.transactions[0]
+        expected_res = [{
+            'pk': trans.pk,
+            'transaction_type': trans.get_transaction_type(),
+            'from_user': trans.from_user,
+            'to_user': trans.to_user,
+            'create_time': self.NOW,
+            'update_time': self.NOW,
+        }]
+        expected = json.dumps(self.get_pagination_json(expected_res))
+
+        self.assertJSONEqual(expected, actual)
+
+    @parameterized.expand([
+        [None, None, 1, 10],
+
+        # With either start or end time
+        ['2021-07-30T10:05:26Z', None, 1, 5],
+        [None, '2021-07-30T07:05:26Z', 8, 10],
+
+        # With both start and end time
+        ['2021-07-30T10:05:26Z', '2021-07-30T14:05:26Z', 1, 5],
+        ['2021-07-30T10:06:26Z', '2021-07-30T14:05:25Z', 2, 4],
+
+        # With timezone
+        ['2021-07-30T17:05:26+0700', '2021-07-30T21:05:26+0700', 1, 5],
+        ['2021-07-30T22:06:26+1200', '2021-07-31T02:05:25+1200', 2, 4],
+    ])
+    def test__filter_transactions__start_end_time(
+        self, start_time, end_time,
+        expected_first_transaction, expected_last_transaction
+    ):
+        self.client.force_authenticate(user=self.creator)
+        url = f'{URL}{self.event.pk}/get-transactions/'
+
+        params = {}
+        if start_time:
+            params['start_time'] = start_time
+        if end_time:
+            params['end_time'] = end_time
+
+        res = self.client.get(url, params)
+        self.assertEqual(res.status_code, 200)
+
+        results = res.json()['results']
+        pks = [result['pk'] for result in results]
+
+        if not expected_first_transaction and not expected_last_transaction:
+            self.assertEqual(len(pks), 0)
+        else:
+            self.assertGreater(len(pks), 0)
+            first_pk = pks[0]
+            last_pk = pks[-1]
+
+            trans_pks = [trans.pk for trans in self.transactions]
+            first_pk_index = trans_pks.index(first_pk)
+            last_pk_index = trans_pks.index(last_pk)
+
+            self.assertEqual(first_pk_index + 1, expected_first_transaction)
+            self.assertEqual(last_pk_index + 1, expected_last_transaction)

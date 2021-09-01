@@ -1,5 +1,6 @@
-from django.db import models
 from django.contrib.auth import get_user_model
+from django.db import models
+from django.db.models import Q
 from django.db.models.enums import TextChoices
 
 from ._common import TimeStamp
@@ -9,19 +10,22 @@ User = get_user_model()
 
 
 class Transaction(TimeStamp):
-    class Types(TextChoices):
-        USER_TO_USER = 'user_to_user'
-        USER_TO_FUND = 'user_to_fund'
-        FUND_TO_USER = 'fund_to_user'
-        USER_EXPENSE = 'user_expense'
-        FUND_EXPENSE = 'fund_expense'
-
     event = models.ForeignKey(Event, on_delete=models.CASCADE, related_name='transactions')
     from_user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, related_name='transactions_paid')
     to_user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, related_name='transactions_received')
     is_deposit = models.BooleanField()
     is_withdrawal = models.BooleanField()
     is_expense = models.BooleanField()
+
+    class Meta:
+        ordering = ['-create_time']
+
+    class Types(TextChoices):
+        USER_TO_USER = 'user_to_user'
+        USER_TO_FUND = 'user_to_fund'
+        FUND_TO_USER = 'fund_to_user'
+        USER_EXPENSE = 'user_expense'
+        FUND_EXPENSE = 'fund_expense'
 
     def is_user_to_user(self):
         return bool(self.from_user and self.to_user)
@@ -77,3 +81,14 @@ class Transaction(TimeStamp):
 
         transaction = cls.objects.create(**attrs)
         return transaction
+
+    @classmethod
+    def filter_transactions(cls, event, start_time=None, end_time=None):
+        conditions = Q(event=event)
+        if start_time:
+            conditions &= Q(create_time__gte=start_time)
+        if end_time:
+            conditions &= Q(create_time__lte=end_time)
+
+        transactions = cls.objects.filter(conditions)
+        return transactions

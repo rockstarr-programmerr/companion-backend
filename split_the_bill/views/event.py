@@ -11,7 +11,7 @@ from split_the_bill.serializers.event import (AddMembersSerializer,
                                               EventSerializer,
                                               RemoveMembersSerializer)
 from split_the_bill.serializers.transaction import (
-    AddTransactionSerializer, RemoveTransactionSerializer,
+    AddTransactionSerializer, GetTransactionsSerializer, RemoveTransactionSerializer,
     TransactionSerializer)
 
 
@@ -81,6 +81,7 @@ class EventViewSet(ModelViewSet):
     @action(
         methods=['POST'], detail=True, url_path='remove-transaction',
         serializer_class=RemoveTransactionSerializer,
+        permission_classes=[IsEventMembers]
     )
     def remove_transaction(self, request, pk):
         serializer = self.get_serializer(data=request.data)
@@ -94,3 +95,27 @@ class EventViewSet(ModelViewSet):
         transaction.delete()
 
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @action(
+        methods=['GET'], detail=True, url_path='get-transactions',
+        serializer_class=GetTransactionsSerializer,
+        permission_classes=[IsEventMembers]
+    )
+    def get_transactions(self, request, pk):
+        """
+        Filter transactions within a time range. Support timezone.
+        `start_time` and `end_time` parameters use ISO-8601 datetime format
+        """
+        serializer = self.get_serializer(data=request.query_params)
+        serializer.is_valid(raise_exception=True)
+
+        event = get_object_or_404(Event, pk=pk)
+        self.check_object_permissions(request, event)
+
+        start_time = serializer.validated_data.get('start_time')
+        end_time = serializer.validated_data.get('end_time')
+        transactions = Transaction.filter_transactions(event, start_time=start_time, end_time=end_time)
+
+        page = self.paginate_queryset(transactions)
+        serializer = TransactionSerializer(instance=page, many=True)
+        return self.get_paginated_response(serializer.data)

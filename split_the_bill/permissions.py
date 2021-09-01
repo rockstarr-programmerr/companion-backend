@@ -25,5 +25,7 @@ class IsEventCreatorOrReadonly(_IsCreatorOrReadonly):
 class IsEventMembers(IsAuthenticated):
     message = _('Only event members can execute this action.')
 
-    def has_object_permission(self, request, view, event):
-        return request.user in event.members.all()
+    def has_object_permission(self, request, view, obj):
+        if not hasattr(obj, 'members'):
+            obj = obj.event
+        return request.user in obj.members.all()

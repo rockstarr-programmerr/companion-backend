@@ -3,7 +3,7 @@ from rest_framework import serializers
 
 from split_the_bill.models import Transaction
 
-from ._common import PkField, CustomChoiceField
+from ._common import CustomChoiceField, PkField
 from .user import UserSerializer
 
 
@@ -14,7 +14,7 @@ class TransactionSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Transaction
-        fields = ['pk', 'transaction_type', 'from_user', 'to_user']
+        fields = ['pk', 'transaction_type', 'from_user', 'to_user', 'create_time', 'update_time']
 
     def get_transaction_type(self, transaction):
         return transaction.get_transaction_type()
@@ -83,3 +83,8 @@ class AddTransactionSerializer(serializers.Serializer):
 
 class RemoveTransactionSerializer(serializers.Serializer):
     transaction_pk = PkField()
+
+
+class GetTransactionsSerializer(serializers.Serializer):
+    start_time = serializers.DateTimeField(required=False, write_only=True)
+    end_time = serializers.DateTimeField(required=False, write_only=True)

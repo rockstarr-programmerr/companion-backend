@@ -1,14 +1,11 @@
 from django.contrib.auth import get_user_model
-
-from rest_framework.viewsets import GenericViewSet
-from rest_framework.generics import GenericAPIView
+from rest_framework import mixins, status
+from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
-from rest_framework.decorators import action, permission_classes
-from rest_framework import status, mixins
+from rest_framework.viewsets import GenericViewSet
 
-from user.serializers.user import UserInfoSerializer, RegisterSerializer
-
+from user.serializers.user import RegisterSerializer, UserInfoSerializer
 
 User = get_user_model()
 
