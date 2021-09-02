@@ -5,22 +5,29 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet
 
-from user.serializers.user import RegisterSerializer, UserInfoSerializer
+from user.filters import UserFilter
+from user.permissions import IsSelfOrReadOnly
+from user.serializers.user import RegisterSerializer, UserSerializer
 
 User = get_user_model()
 
 
-class UserViewSet(GenericViewSet, mixins.ListModelMixin):
+class UserViewSet(mixins.RetrieveModelMixin,
+                  mixins.UpdateModelMixin,
+                  mixins.DestroyModelMixin,
+                  mixins.ListModelMixin,
+                  GenericViewSet):
     """
-    Endpoints for authentication:
+    Only show users who participated the same events as the logged in user.
 
+    Endpoints for authentication:
     "user/login/": Login with credential (username, password), response with "access" and "refresh" token.
     "user/token-refresh/": Refresh token, response with another "access" and "refresh" token.
     """
-    serializer_class = UserInfoSerializer
-
-    def get_queryset(self):
-        return User.objects.filter(pk=self.request.user.pk)
+    queryset = User.objects.all()
+    serializer_class = UserSerializer
+    filterset_class = UserFilter
+    permission_classes = [IsSelfOrReadOnly]
 
     @action(
         detail=False, methods=['POST'], url_path='register',
@@ -39,20 +46,3 @@ class UserViewSet(GenericViewSet, mixins.ListModelMixin):
 
         serializer = self.get_serializer(instance=user)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
-
-    @action(detail=False, methods=['GET'], url_path='get-my-info')
-    def get_info(self, request):
-        serializer = self.get_serializer(instance=request.user)
-        return Response(serializer.data)
-
-    @action(detail=False, methods=['POST', 'PUT', 'PATCH'], url_path='update-my-info')
-    def update_info(self, request):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-
-        for key, value in serializer.validated_data.items():
-            setattr(request.user, key, value)
-        request.user.save()
-
-        serializer = self.get_serializer(instance=request.user)
-        return Response(serializer.data)

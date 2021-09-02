@@ -5,10 +5,10 @@ from django.contrib.auth.password_validation import validate_password
 User = get_user_model()
 
 
-class UserInfoSerializer(serializers.ModelSerializer):
+class UserSerializer(serializers.HyperlinkedModelSerializer):
     class Meta:
         model = User
-        fields = ['username', 'email']
+        fields = ['url', 'username', 'email']
 
 class RegisterSerializer(serializers.ModelSerializer):
     class Meta:
