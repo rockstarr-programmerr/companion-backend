@@ -5,9 +5,9 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet
 
-from user.filters import UserFilter
+from user.filters import UserFilter, UserSearchFilter
 from user.permissions import IsSelfOrReadOnly
-from user.serializers.user import RegisterSerializer, UserSerializer
+from user.serializers.user import RegisterSerializer, UserSerializer, UserSearchSerializer
 
 User = get_user_model()
 
@@ -46,3 +46,16 @@ class UserViewSet(mixins.RetrieveModelMixin,
 
         serializer = self.get_serializer(instance=user)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    @action(
+        detail=False, methods=['GET'], url_name='search',
+        serializer_class=UserSearchSerializer,
+        filterset_class=UserSearchFilter
+    )
+    def search(self, request):
+        """
+        When searching by username, only username are returned, not all user's info
+        """
+        queryset = self.filter_queryset(self.get_queryset())
+        serializer = self.get_serializer(instance=queryset, many=True)
+        return Response(serializer.data)

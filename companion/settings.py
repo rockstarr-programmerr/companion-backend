@@ -170,7 +170,11 @@ REST_FRAMEWORK = {
     'PAGE_SIZE': 25,
     'DEFAULT_FILTER_BACKENDS': [
         'django_filters.rest_framework.DjangoFilterBackend',
-    ]
+    ],
+    'DEFAULT_RENDERER_CLASSES': [
+        'rest_framework.renderers.JSONRenderer',
+        'companion.renderers.CustomBrowsableAPIRenderer',
+    ],
 }
 
 SIMPLE_JWT = {
