@@ -1,3 +1,4 @@
+from split_the_bill.filters.transaction import TransactionFilter
 from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.generics import get_object_or_404
@@ -106,16 +107,18 @@ class EventViewSet(ModelViewSet):
         Filter transactions within a time range. Support timezone.
         `start_time` and `end_time` parameters use ISO-8601 datetime format
         """
-        serializer = self.get_serializer(data=request.query_params)
-        serializer.is_valid(raise_exception=True)
+        # serializer = self.get_serializer(data=request.query_params)
+        # serializer.is_valid(raise_exception=True)
 
         event = get_object_or_404(Event, pk=pk)
         self.check_object_permissions(request, event)
 
-        start_time = serializer.validated_data.get('start_time')
-        end_time = serializer.validated_data.get('end_time')
-        transactions = Transaction.filter_transactions(event, start_time=start_time, end_time=end_time)
+        f = TransactionFilter(request.query_params, queryset=Transaction.filter_transactions(event))
 
-        page = self.paginate_queryset(transactions)
+        # start_time = serializer.validated_data.get('start_time')
+        # end_time = serializer.validated_data.get('end_time')
+        # transactions = Transaction.filter_transactions(event, start_time=start_time, end_time=end_time)
+
+        page = self.paginate_queryset(f.qs)
         serializer = TransactionSerializer(instance=page, many=True)
         return self.get_paginated_response(serializer.data)
