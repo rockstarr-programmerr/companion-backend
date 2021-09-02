@@ -1,15 +1,11 @@
 from rest_framework.viewsets import ModelViewSet
 
-from split_the_bill.serializers.transaction import TransactionSerializer
+from split_the_bill.filters import TransactionFilter
 from split_the_bill.models import Transaction
+from split_the_bill.serializers.transaction import TransactionSerializer
 
 
 class TransactionViewSet(ModelViewSet):
+    queryset = Transaction.objects.all()
     serializer_class = TransactionSerializer
-
-    def get_queryset(self):
-        events = self.request.user.events_participated.all()
-        qs = Transaction.objects.filter(event__in=events)\
-                                .select_related('from_user', 'to_user', 'event')\
-                                .prefetch_related('event__members')
-        return qs
+    filterset_class = TransactionFilter

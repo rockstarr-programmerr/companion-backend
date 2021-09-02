@@ -4,18 +4,17 @@ from rest_framework.exceptions import PermissionDenied
 
 from split_the_bill.models import Transaction
 
-from ._common import CustomChoiceField, PkField
-from .user import UserSerializer
+from ._common import CustomChoiceField
 
 
-class TransactionSerializer(serializers.ModelSerializer):
+class TransactionSerializer(serializers.HyperlinkedModelSerializer):
     transaction_type = CustomChoiceField(choices=Transaction.Types.choices)
 
     class Meta:
         model = Transaction
         fields = [
-            'pk', 'event', 'transaction_type',
-            'from_user', 'to_user', 'amount',
+            'url', 'pk', 'event',
+            'transaction_type', 'from_user', 'to_user', 'amount',
             'create_time', 'update_time'
         ]
 

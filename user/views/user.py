@@ -14,7 +14,6 @@ User = get_user_model()
 
 class UserViewSet(mixins.RetrieveModelMixin,
                   mixins.UpdateModelMixin,
-                  mixins.DestroyModelMixin,
                   mixins.ListModelMixin,
                   GenericViewSet):
     """
@@ -35,6 +34,9 @@ class UserViewSet(mixins.RetrieveModelMixin,
         permission_classes=[AllowAny]
     )
     def register(self, request):
+        """
+        Register user.
+        """
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 

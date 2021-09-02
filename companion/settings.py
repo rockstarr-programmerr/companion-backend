@@ -56,6 +56,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'django_filters',
     'corsheaders',
+    'crispy_forms',
     'user.apps.UserConfig',
     'split_the_bill.apps.SplitTheBillConfig',
 ]
