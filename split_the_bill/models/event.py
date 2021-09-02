@@ -11,5 +11,8 @@ class Event(TimeStamp):
     creator = models.ForeignKey(User, on_delete=models.CASCADE, related_name='events_created')
     members = models.ManyToManyField(User, related_name='events_participated')
 
+    def __str__(self):
+        return f'{self.name} - {self.creator.username}'
+
     def is_creator(self, user):
         return user == self.creator

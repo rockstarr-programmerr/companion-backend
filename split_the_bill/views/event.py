@@ -11,9 +11,9 @@ from split_the_bill.permissions import IsEventCreatorOrReadonly, IsEventMembers
 from split_the_bill.serializers.event import (AddMembersSerializer,
                                               EventSerializer,
                                               RemoveMembersSerializer)
-from split_the_bill.serializers.transaction import (
-    AddTransactionSerializer, GetTransactionsSerializer, RemoveTransactionSerializer,
-    TransactionSerializer)
+# from split_the_bill.serializers.transaction import (
+#     AddTransactionSerializer, GetTransactionsSerializer, RemoveTransactionSerializer,
+#     TransactionSerializer)
 
 
 class EventViewSet(ModelViewSet):
@@ -62,63 +62,63 @@ class EventViewSet(ModelViewSet):
 
         return Response()
 
-    @action(
-        methods=['POST'], detail=True, url_path='add-transaction',
-        serializer_class=AddTransactionSerializer,
-        permission_classes=[IsEventMembers]
-    )
-    def add_transaction(self, request, pk):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
+    # @action(
+    #     methods=['POST'], detail=True, url_path='add-transaction',
+    #     serializer_class=AddTransactionSerializer,
+    #     permission_classes=[IsEventMembers]
+    # )
+    # def add_transaction(self, request, pk):
+    #     serializer = self.get_serializer(data=request.data)
+    #     serializer.is_valid(raise_exception=True)
 
-        event = get_object_or_404(Event, pk=pk)
-        self.check_object_permissions(request, event)
+    #     event = get_object_or_404(Event, pk=pk)
+    #     self.check_object_permissions(request, event)
 
-        transaction = serializer.create(serializer.validated_data, event=event)
-        serializer = TransactionSerializer(instance=transaction)
+    #     transaction = serializer.create(serializer.validated_data, event=event)
+    #     serializer = TransactionSerializer(instance=transaction)
 
-        return Response(serializer.data)
+    #     return Response(serializer.data)
 
-    @action(
-        methods=['POST'], detail=True, url_path='remove-transaction',
-        serializer_class=RemoveTransactionSerializer,
-        permission_classes=[IsEventMembers]
-    )
-    def remove_transaction(self, request, pk):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
+    # @action(
+    #     methods=['POST'], detail=True, url_path='remove-transaction',
+    #     serializer_class=RemoveTransactionSerializer,
+    #     permission_classes=[IsEventMembers]
+    # )
+    # def remove_transaction(self, request, pk):
+    #     serializer = self.get_serializer(data=request.data)
+    #     serializer.is_valid(raise_exception=True)
 
-        event = get_object_or_404(Event, pk=pk)
-        self.check_object_permissions(request, event)
+    #     event = get_object_or_404(Event, pk=pk)
+    #     self.check_object_permissions(request, event)
 
-        transaction_pk = serializer.validated_data['transaction_pk']
-        transaction = get_object_or_404(Transaction, pk=transaction_pk)
-        transaction.delete()
+    #     transaction_pk = serializer.validated_data['transaction_pk']
+    #     transaction = get_object_or_404(Transaction, pk=transaction_pk)
+    #     transaction.delete()
 
-        return Response(status=status.HTTP_204_NO_CONTENT)
+    #     return Response(status=status.HTTP_204_NO_CONTENT)
 
-    @action(
-        methods=['GET'], detail=True, url_path='get-transactions',
-        serializer_class=GetTransactionsSerializer,
-        permission_classes=[IsEventMembers]
-    )
-    def get_transactions(self, request, pk):
-        """
-        Filter transactions within a time range. Support timezone.
-        `start_time` and `end_time` parameters use ISO-8601 datetime format
-        """
-        # serializer = self.get_serializer(data=request.query_params)
-        # serializer.is_valid(raise_exception=True)
+    # @action(
+    #     methods=['GET'], detail=True, url_path='get-transactions',
+    #     serializer_class=GetTransactionsSerializer,
+    #     permission_classes=[IsEventMembers]
+    # )
+    # def get_transactions(self, request, pk):
+    #     """
+    #     Filter transactions within a time range. Support timezone.
+    #     `start_time` and `end_time` parameters use ISO-8601 datetime format
+    #     """
+    #     # serializer = self.get_serializer(data=request.query_params)
+    #     # serializer.is_valid(raise_exception=True)
 
-        event = get_object_or_404(Event, pk=pk)
-        self.check_object_permissions(request, event)
+    #     event = get_object_or_404(Event, pk=pk)
+    #     self.check_object_permissions(request, event)
 
-        f = TransactionFilter(request.query_params, queryset=Transaction.filter_transactions(event))
+    #     f = TransactionFilter(request.query_params, queryset=Transaction.filter_transactions(event))
 
-        # start_time = serializer.validated_data.get('start_time')
-        # end_time = serializer.validated_data.get('end_time')
-        # transactions = Transaction.filter_transactions(event, start_time=start_time, end_time=end_time)
+    #     # start_time = serializer.validated_data.get('start_time')
+    #     # end_time = serializer.validated_data.get('end_time')
+    #     # transactions = Transaction.filter_transactions(event, start_time=start_time, end_time=end_time)
 
-        page = self.paginate_queryset(f.qs)
-        serializer = TransactionSerializer(instance=page, many=True)
-        return self.get_paginated_response(serializer.data)
+    #     page = self.paginate_queryset(f.qs)
+    #     serializer = TransactionSerializer(instance=page, many=True)
+    #     return self.get_paginated_response(serializer.data)

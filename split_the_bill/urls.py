@@ -15,5 +15,6 @@ urlpatterns = [
 router = DefaultRouter()
 router.register('events', views.EventViewSet, basename='event')
 router.register('groups', views.GroupViewSet, basename='group')
+router.register('transactions', views.TransactionViewSet, basename='transaction')
 
 urlpatterns.extend(router.urls)

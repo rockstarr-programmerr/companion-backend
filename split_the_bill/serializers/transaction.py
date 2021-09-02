@@ -1,5 +1,6 @@
-from django.utils.translation import gettext as _
+from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
+from rest_framework.exceptions import PermissionDenied
 
 from split_the_bill.models import Transaction
 
@@ -8,24 +9,42 @@ from .user import UserSerializer
 
 
 class TransactionSerializer(serializers.ModelSerializer):
-    transaction_type = serializers.SerializerMethodField()
-    from_user = UserSerializer(required=False)
-    to_user = UserSerializer(required=False)
+    transaction_type = CustomChoiceField(choices=Transaction.Types.choices)
 
     class Meta:
         model = Transaction
-        fields = ['pk', 'transaction_type', 'from_user', 'to_user', 'create_time', 'update_time']
+        fields = [
+            'pk', 'event', 'transaction_type',
+            'from_user', 'to_user', 'amount',
+            'create_time', 'update_time'
+        ]
 
-    def get_transaction_type(self, transaction):
-        return transaction.get_transaction_type()
-
-
-class AddTransactionSerializer(serializers.Serializer):
-    transaction_type = CustomChoiceField(Transaction.Types.choices)
-    from_user = PkField(required=False, allow_null=True)
-    to_user = PkField(required=False, allow_null=True)
+    def validate_event(self, event):
+        logged_in_user = self.context['request'].user
+        if event not in logged_in_user.events_participated.all():
+            raise PermissionDenied(_("You don't have permission for this event."))
+        return event
 
     def validate(self, attrs):
+        self._validate_user_is_event_member(attrs)
+        self._validate_transaction_logic(attrs)
+        return attrs
+
+    def _validate_user_is_event_member(self, attrs):
+        event = attrs['event']
+        from_user = attrs.get('from_user')
+        to_user = attrs.get('to_user')
+
+        members = event.members.all()
+        if (
+            (from_user and from_user not in members) or
+            (to_user and to_user not in members)
+        ):
+            raise serializers.ValidationError(
+                _("`from_user` and `to_user` must be one of event's members.")
+            )
+
+    def _validate_transaction_logic(self, attrs):
         transaction_type = attrs['transaction_type']
         from_user = attrs.get('from_user')
         to_user = attrs.get('to_user')
@@ -69,22 +88,3 @@ class AddTransactionSerializer(serializers.Serializer):
             raise serializers.ValidationError(
                 _('If `transaction_type` is "fund_expense" then both `from_user` and `to_user` must be null.')
             )
-
-        return attrs
-
-    def create(self, validated_data, **kwargs):
-        transaction_type = validated_data['transaction_type']
-        from_user = validated_data.get('from_user')
-        to_user = validated_data.get('to_user')
-
-        transaction = Transaction.create_transaction(transaction_type, from_user, to_user, **kwargs)
-        return transaction
-
-
-class RemoveTransactionSerializer(serializers.Serializer):
-    transaction_pk = PkField()
-
-
-class GetTransactionsSerializer(serializers.Serializer):
-    start_time = serializers.DateTimeField(required=False, write_only=True)
-    end_time = serializers.DateTimeField(required=False, write_only=True)
