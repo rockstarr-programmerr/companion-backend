@@ -221,4 +221,4 @@ if env('DEBUG'):
         'rest_framework.authentication.SessionAuthentication',  # For authentication to browsable API
     ])
 
-    LOGIN_REDIRECT_URL = '/users/get-my-info/'
+    LOGIN_REDIRECT_URL = '/'
