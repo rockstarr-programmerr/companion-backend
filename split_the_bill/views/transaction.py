@@ -9,3 +9,5 @@ class TransactionViewSet(ModelViewSet):
     queryset = Transaction.objects.all()
     serializer_class = TransactionSerializer
     filterset_class = TransactionFilter
+    ordering_fields = ['amount', 'create_time', 'update_time']
+    ordering = ['-create_time']

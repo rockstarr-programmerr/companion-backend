@@ -27,6 +27,8 @@ class UserViewSet(mixins.RetrieveModelMixin,
     serializer_class = UserSerializer
     filterset_class = UserFilter
     permission_classes = [IsSelfOrReadOnly]
+    ordering_fields = ['username', 'email']
+    ordering = ['username']
 
     @action(
         detail=False, methods=['POST'], url_path='register',
@@ -52,7 +54,8 @@ class UserViewSet(mixins.RetrieveModelMixin,
     @action(
         detail=False, methods=['GET'], url_name='search',
         serializer_class=UserSearchSerializer,
-        filterset_class=UserSearchFilter
+        filterset_class=UserSearchFilter,
+        ordering_fields=['username']
     )
     def search(self, request):
         """

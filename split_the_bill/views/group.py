@@ -7,6 +7,8 @@ from split_the_bill.permissions import IsGroupOwnerOrReadonly
 class GroupViewSet(ModelViewSet):
     serializer_class = GroupSerializer
     permission_classes = [IsGroupOwnerOrReadonly]
+    ordering_fields = ['name', 'create_time', 'update_time']
+    ordering = ['-create_time']
 
     def get_queryset(self):
         return self.request.user.groups_joined.all()

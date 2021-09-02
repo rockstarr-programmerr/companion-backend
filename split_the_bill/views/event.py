@@ -13,6 +13,8 @@ from split_the_bill.serializers.event import (AddMembersSerializer,
 class EventViewSet(ModelViewSet):
     serializer_class = EventSerializer
     permission_classes = [IsEventCreatorOrReadonly]
+    ordering_fields = ['name', 'create_time', 'update_time']
+    ordering = ['-create_time']
 
     def get_queryset(self):
         return self.request.user.events_participated.all()
