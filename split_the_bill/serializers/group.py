@@ -1,19 +1,17 @@
 from django.utils.translation import gettext as _
 from rest_framework import serializers
 
-from companion.utils.serializers import ExtraDetailActionUrlsMixin
 from split_the_bill.models import Group
 from user.serializers.user import UserSerializer
 
 
-class GroupSerializer(ExtraDetailActionUrlsMixin, serializers.HyperlinkedModelSerializer):
+class GroupSerializer(serializers.HyperlinkedModelSerializer):
     owner = UserSerializer(read_only=True)
     members = UserSerializer(many=True, read_only=True)
-    extra_action_urls = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = Group
-        fields = ['url', 'pk', 'name', 'owner', 'members', 'create_time', 'extra_action_urls']
+        fields = ['url', 'pk', 'name', 'owner', 'members', 'create_time']
 
     def validate_name(self, name):
         request = self.context['request']

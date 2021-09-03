@@ -2,18 +2,15 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
 
-from companion.utils.serializers import ExtraDetailActionUrlsMixin
 from user.models import USERNAME_MIN_LENGTH
 
 User = get_user_model()
 
 
-class UserSerializer(ExtraDetailActionUrlsMixin, serializers.HyperlinkedModelSerializer):
-    extra_action_urls = serializers.SerializerMethodField(read_only=True)
-
+class UserSerializer(serializers.HyperlinkedModelSerializer):
     class Meta:
         model = User
-        fields = ['url', 'pk', 'username', 'email', 'avatar', 'extra_action_urls']
+        fields = ['url', 'pk', 'username', 'email', 'avatar']
 
 
 class RegisterSerializer(serializers.ModelSerializer):

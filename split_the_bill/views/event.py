@@ -3,7 +3,7 @@ from rest_framework.generics import get_object_or_404
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
 
-from companion.utils.api import add_extra_action_urls
+from companion.utils.api import extra_action_urls
 from split_the_bill.models import Event
 from split_the_bill.permissions import IsEventCreatorOrReadonly
 from split_the_bill.serializers.event import (AddMembersSerializer,
@@ -11,7 +11,7 @@ from split_the_bill.serializers.event import (AddMembersSerializer,
                                               RemoveMembersSerializer)
 
 
-@add_extra_action_urls
+@extra_action_urls
 class EventViewSet(ModelViewSet):
     serializer_class = EventSerializer
     permission_classes = [IsEventCreatorOrReadonly]

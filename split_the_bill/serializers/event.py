@@ -3,7 +3,6 @@ from rest_framework import serializers
 from rest_framework.fields import ListField
 from rest_framework.reverse import reverse
 
-from companion.utils.serializers import ExtraDetailActionUrlsMixin
 from split_the_bill.models import Event
 from split_the_bill.utils.url import update_url_params
 from user.serializers.user import UserSerializer
@@ -11,7 +10,7 @@ from user.serializers.user import UserSerializer
 from ._common import PkField
 
 
-class EventSerializer(ExtraDetailActionUrlsMixin, serializers.HyperlinkedModelSerializer):
+class EventSerializer(serializers.HyperlinkedModelSerializer):
     creator = UserSerializer(read_only=True)
     members = UserSerializer(many=True, read_only=True)
     transactions_url = serializers.SerializerMethodField(read_only=True)
@@ -29,6 +28,16 @@ class EventSerializer(ExtraDetailActionUrlsMixin, serializers.HyperlinkedModelSe
         url = reverse('transaction-list', request=self.context['request'])
         params = {'event': transaction.pk}
         return update_url_params(url, params)
+
+    def get_extra_action_urls(self, transaction):
+        kwargs = {
+            'kwargs': {'pk': transaction.pk},
+            'request': self.context['request'],
+        }
+        return {
+            'add_members': reverse('event-add-members', **kwargs),
+            'remove_members': reverse('event-remove-members', **kwargs),
+        }
 
 
 class AddMembersSerializer(serializers.Serializer):

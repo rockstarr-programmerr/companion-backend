@@ -2,23 +2,22 @@ from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
 from rest_framework.exceptions import PermissionDenied
 
-from companion.utils.serializers import ExtraDetailActionUrlsMixin
 from split_the_bill.models import Transaction
+from user.serializers.user import UserSerializer
 
 from ._common import CustomChoiceField
 
 
-class TransactionSerializer(ExtraDetailActionUrlsMixin, serializers.HyperlinkedModelSerializer):
+class TransactionRequestSerializer(serializers.HyperlinkedModelSerializer):
     transaction_type = CustomChoiceField(choices=Transaction.Types.choices)
-    extra_action_urls = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = Transaction
-        fields = [
-            'url', 'pk', 'event',
-            'transaction_type', 'from_user', 'to_user', 'amount',
-            'create_time', 'update_time', 'extra_action_urls',
-        ]
+        fields = ['event', 'transaction_type', 'from_user', 'to_user', 'amount']
+
+    def to_representation(self, transaction):
+        serializer = TransactionResponseSerializer(instance=transaction, context=self.context)
+        return serializer.data
 
     def validate_event(self, event):
         logged_in_user = self.context['request'].user
@@ -101,3 +100,16 @@ class TransactionSerializer(ExtraDetailActionUrlsMixin, serializers.HyperlinkedM
             raise serializers.ValidationError(
                 _('If `transaction_type` is "fund_expense" then both `from_user` and `to_user` must be null.')
             )
+
+
+class TransactionResponseSerializer(serializers.HyperlinkedModelSerializer):
+    from_user = UserSerializer()
+    to_user = UserSerializer()
+
+    class Meta:
+        model = Transaction
+        fields = [
+            'url', 'pk', 'event',
+            'transaction_type', 'from_user', 'to_user', 'amount',
+            'create_time', 'update_time',
+        ]
