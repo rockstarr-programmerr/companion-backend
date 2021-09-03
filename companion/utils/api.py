@@ -23,13 +23,11 @@ def add_extra_action_urls(ViewSet):
 
                 extra_action_urls[url_name] = url
 
-            extra_data = {
-                'extra_action_urls': extra_action_urls,
-            }
-
             if not isinstance(response.data, dict):
                 response.data = {'results': response.data}
-            response.data.update(extra_data)
+
+            if not 'extra_action_urls' in response.data:
+                response.data['extra_action_urls'] = extra_action_urls
 
             return response
         return wrapper

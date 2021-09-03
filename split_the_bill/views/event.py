@@ -29,8 +29,7 @@ class EventViewSet(ModelViewSet):
         )
 
     @action(
-        methods=['POST'], detail=True,
-        url_path='add-members', url_name='add_members',
+        methods=['POST'], detail=True, url_path='add-members',
         serializer_class=AddMembersSerializer
     )
     def add_members(self, request, pk):
@@ -46,8 +45,7 @@ class EventViewSet(ModelViewSet):
         return Response()
 
     @action(
-        methods=['POST'], detail=True,
-        url_path='remove-members', url_name='remove_members',
+        methods=['POST'], detail=True, url_path='remove-members',
         serializer_class=RemoveMembersSerializer
     )
     def remove_members(self, request, pk):

@@ -2,20 +2,22 @@ from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
 from rest_framework.exceptions import PermissionDenied
 
+from companion.utils.serializers import ExtraDetailActionUrlsMixin
 from split_the_bill.models import Transaction
 
 from ._common import CustomChoiceField
 
 
-class TransactionSerializer(serializers.HyperlinkedModelSerializer):
+class TransactionSerializer(ExtraDetailActionUrlsMixin, serializers.HyperlinkedModelSerializer):
     transaction_type = CustomChoiceField(choices=Transaction.Types.choices)
+    extra_action_urls = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = Transaction
         fields = [
             'url', 'pk', 'event',
             'transaction_type', 'from_user', 'to_user', 'amount',
-            'create_time', 'update_time'
+            'create_time', 'update_time', 'extra_action_urls',
         ]
 
     def validate_event(self, event):
