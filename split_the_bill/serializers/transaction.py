@@ -25,9 +25,21 @@ class TransactionSerializer(serializers.HyperlinkedModelSerializer):
         return event
 
     def validate(self, attrs):
+        self._validate_from_to_user_are_different(attrs)
         self._validate_user_is_event_member(attrs)
         self._validate_transaction_logic(attrs)
         return attrs
+
+    def _validate_from_to_user_are_different(self, attrs):
+        from_user = attrs.get('from_user')
+        to_user = attrs.get('to_user')
+        if (
+            from_user and to_user and
+            from_user == to_user
+        ):
+            raise serializers.ValidationError(
+                _("`from_user` and `to_user` must be different.")
+            )
 
     def _validate_user_is_event_member(self, attrs):
         event = attrs['event']
