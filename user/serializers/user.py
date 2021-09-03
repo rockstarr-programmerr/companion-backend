@@ -10,7 +10,7 @@ User = get_user_model()
 class UserSerializer(serializers.HyperlinkedModelSerializer):
     class Meta:
         model = User
-        fields = ['url', 'pk', 'username', 'email']
+        fields = ['url', 'pk', 'username', 'email', 'avatar']
 
 
 class RegisterSerializer(serializers.ModelSerializer):
