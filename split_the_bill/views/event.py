@@ -37,8 +37,8 @@ class EventViewSet(ModelViewSet):
         event = get_object_or_404(Event, pk=pk)
         self.check_object_permissions(request, event)
 
-        member_pks = serializer.validated_data['member_pks']
-        event.members.add(*member_pks)
+        member_usernames = serializer.validated_data['member_usernames']
+        event.add_members_by_usernames(member_usernames)
 
         return Response()
 

@@ -16,3 +16,7 @@ class Event(TimeStamp):
 
     def is_creator(self, user):
         return user == self.creator
+
+    def add_members_by_usernames(self, usernames):
+        members = User.objects.filter(username__in=usernames)
+        self.members.add(*members)

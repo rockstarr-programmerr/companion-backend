@@ -1,12 +1,13 @@
 from django.utils.translation import gettext as _
 from rest_framework import serializers
+from rest_framework.fields import ListField
 from rest_framework.reverse import reverse
 
 from split_the_bill.models import Event
 from split_the_bill.utils.url import update_url_params
+from user.serializers.user import UserSerializer
 
 from ._common import PkField
-from .user import UserSerializer
 
 
 class EventSerializer(serializers.HyperlinkedModelSerializer):
@@ -24,16 +25,12 @@ class EventSerializer(serializers.HyperlinkedModelSerializer):
         return update_url_params(url, params)
 
 
-class _PkListField(serializers.ListField):
-    child = PkField()
-
-
 class AddMembersSerializer(serializers.Serializer):
-    member_pks = _PkListField(allow_empty=False, max_length=100)
+    member_usernames = ListField(child=serializers.CharField(), allow_empty=False, max_length=100)
 
 
 class RemoveMembersSerializer(serializers.Serializer):
-    member_pks = _PkListField(allow_empty=False, max_length=100)
+    member_pks = ListField(child=PkField(), allow_empty=False, max_length=100)
 
     def validate_member_pks(self, pks):
         request = self.context['request']

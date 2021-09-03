@@ -10,7 +10,7 @@ User = get_user_model()
 class UserSerializer(serializers.HyperlinkedModelSerializer):
     class Meta:
         model = User
-        fields = ['url', 'username', 'email']
+        fields = ['url', 'pk', 'username', 'email']
 
 
 class RegisterSerializer(serializers.ModelSerializer):
@@ -28,7 +28,7 @@ class RegisterSerializer(serializers.ModelSerializer):
 class UserSearchSerializer(serializers.HyperlinkedModelSerializer):
     class Meta:
         model = User
-        fields = ['url', 'pk', 'username']
+        fields = ['username']
         extra_kwargs = {
             'username': {
                 'min_length': USERNAME_MIN_LENGTH,

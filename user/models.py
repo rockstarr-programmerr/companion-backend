@@ -17,5 +17,3 @@ class User(AbstractUser):
         validators=[MinLengthValidator(USERNAME_MIN_LENGTH)],
     )
     # avatar = models.ImageField(upload_to='users/avatar/%Y/%m', blank=True)
-
-
