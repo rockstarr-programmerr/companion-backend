@@ -2,7 +2,7 @@ from rest_framework import serializers
 from django.utils.translation import gettext as _
 
 from split_the_bill.models import Group
-from .user import UserSerializer
+from user.serializers.user import UserSerializer
 
 
 class GroupSerializer(serializers.HyperlinkedModelSerializer):
