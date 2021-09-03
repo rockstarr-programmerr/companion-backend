@@ -57,7 +57,7 @@ class UserViewSet(mixins.RetrieveModelMixin,
 
     @action(
         detail=False, methods=['GET'],
-        url_path='search', url_name='register',
+        url_path='search', url_name='search',
         serializer_class=UserSearchSerializer,
         filterset_class=UserSearchFilter,
         ordering_fields=['username']
