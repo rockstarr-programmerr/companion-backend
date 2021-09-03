@@ -67,3 +67,18 @@ class UserViewSet(mixins.RetrieveModelMixin,
         queryset = self.filter_queryset(self.get_queryset())
         serializer = self.get_serializer(instance=queryset, many=True)
         return Response(serializer.data)
+
+    @action(
+        detail=False, methods=['GET', 'PUT', 'PATCH'],
+        url_path='my-info',
+    )
+    def my_info(self, request):
+        if request.method == 'GET':
+            serializer = self.get_serializer(instance=request.user)
+            return Response(serializer.data)
+        else:
+            partial = request.method == 'PATCH'
+            serializer = self.get_serializer(instance=request.user, data=request.data, partial=partial)
+            serializer.is_valid(raise_exception=True)
+            self.perform_update(serializer)
+            return Response(serializer.data)
