@@ -1,9 +1,11 @@
 from rest_framework.viewsets import ModelViewSet
 
+from companion.utils.api import add_extra_action_urls
 from split_the_bill.serializers.group import GroupSerializer
 from split_the_bill.permissions import IsGroupOwnerOrReadonly
 
 
+@add_extra_action_urls
 class GroupViewSet(ModelViewSet):
     serializer_class = GroupSerializer
     permission_classes = [IsGroupOwnerOrReadonly]

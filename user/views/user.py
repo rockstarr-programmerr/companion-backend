@@ -5,13 +5,16 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet
 
+from companion.utils.api import add_extra_action_urls
 from user.filters import UserFilter, UserSearchFilter
 from user.permissions import IsSelfOrReadOnly
-from user.serializers.user import RegisterSerializer, UserSerializer, UserSearchSerializer
+from user.serializers.user import (RegisterSerializer, UserSearchSerializer,
+                                   UserSerializer)
 
 User = get_user_model()
 
 
+@add_extra_action_urls
 class UserViewSet(mixins.RetrieveModelMixin,
                   mixins.UpdateModelMixin,
                   mixins.ListModelMixin,
@@ -31,7 +34,8 @@ class UserViewSet(mixins.RetrieveModelMixin,
     ordering = ['username']
 
     @action(
-        detail=False, methods=['POST'], url_path='register',
+        detail=False, methods=['POST'],
+        url_path='register', url_name='register',
         serializer_class=RegisterSerializer,
         permission_classes=[AllowAny]
     )
@@ -52,7 +56,8 @@ class UserViewSet(mixins.RetrieveModelMixin,
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     @action(
-        detail=False, methods=['GET'], url_name='search',
+        detail=False, methods=['GET'],
+        url_path='search', url_name='register',
         serializer_class=UserSearchSerializer,
         filterset_class=UserSearchFilter,
         ordering_fields=['username']

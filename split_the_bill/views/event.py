@@ -3,6 +3,7 @@ from rest_framework.generics import get_object_or_404
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
 
+from companion.utils.api import add_extra_action_urls
 from split_the_bill.models import Event
 from split_the_bill.permissions import IsEventCreatorOrReadonly
 from split_the_bill.serializers.event import (AddMembersSerializer,
@@ -10,6 +11,7 @@ from split_the_bill.serializers.event import (AddMembersSerializer,
                                               RemoveMembersSerializer)
 
 
+@add_extra_action_urls
 class EventViewSet(ModelViewSet):
     serializer_class = EventSerializer
     permission_classes = [IsEventCreatorOrReadonly]
@@ -27,7 +29,8 @@ class EventViewSet(ModelViewSet):
         )
 
     @action(
-        methods=['POST'], detail=True, url_path='add-members',
+        methods=['POST'], detail=True,
+        url_path='add-members', url_name='add_members',
         serializer_class=AddMembersSerializer
     )
     def add_members(self, request, pk):
@@ -43,7 +46,8 @@ class EventViewSet(ModelViewSet):
         return Response()
 
     @action(
-        methods=['POST'], detail=True, url_path='remove-members',
+        methods=['POST'], detail=True,
+        url_path='remove-members', url_name='remove_members',
         serializer_class=RemoveMembersSerializer
     )
     def remove_members(self, request, pk):
