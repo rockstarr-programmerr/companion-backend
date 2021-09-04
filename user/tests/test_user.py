@@ -164,6 +164,79 @@ class UserReadTestCase(_UserTestCase):
         self.assertEqual(res.status_code, 200)
 
 
+class UserUpdateTestCase(_UserTestCase):
+    @parameterized.expand([
+        ['put'],
+        ['patch'],
+    ])
+    def test__put_and_patch(self, method):
+        user = baker.make(User)
+        self.client.force_authenticate(user=user)
+        url = self.get_detail_url(user.pk)
+        req_method = getattr(self.client, method)
+
+        new_username = fake.text(max_nb_chars=10)
+        new_email = fake.email()
+        data = {
+            'username': new_username,
+            'email': new_email,
+        }
+        res = req_method(url, data)
+        self.assertEqual(res.status_code, 200)
+
+        # Test DB
+        user.refresh_from_db()
+        self.assertEqual(user.username, new_username)
+        self.assertEqual(user.email, new_email)
+
+        # Test Response
+        actual = res.json()
+        expected = json.dumps(
+            self.get_user_json(user, request=res.wsgi_request)
+        )
+        self.assertJSONEqual(expected, actual)
+
+    @parameterized.expand([
+        ['put'],
+        ['patch'],
+    ])
+    def test__put_and_patch__permission(self, method):
+        req_method = getattr(self.client, method)
+
+        # Unauthenticated user cannot access
+        self.client.force_authenticate(user=None)
+        url = self.get_detail_url(self.creator1.pk)
+        res = req_method(url)
+        self.assertEqual(res.status_code, 401)
+
+        # User cannot update info of others
+        self.client.force_authenticate(user=self.creator1)
+        other_user = random.choice(self.event1.members.exclude(pk=self.creator1.pk))
+        url = self.get_detail_url(other_user.pk)
+        res = req_method(url)
+        self.assertEqual(res.status_code, 403)
+
+    def test_bug__user_cannot_update__or__see_detail__if_not_join_event(self):
+        user = baker.make(User)
+        self.client.force_authenticate(user=user)
+        url = self.get_detail_url(user.pk)
+
+        res = self.client.get(url)
+        self.assertEqual(res.status_code, 200)
+
+        new_username = fake.text(max_nb_chars=10)
+        new_email = fake.email()
+        data = {
+            'username': new_username,
+            'email': new_email,
+        }
+        res = self.client.put(url, data)
+        self.assertEqual(res.status_code, 200)
+
+        res = self.client.patch(url, data)
+        self.assertEqual(res.status_code, 200)
+
+
 # class UserInfoTestCase(APITestCase):
 #     url = '/users/'
 #     get_info_url = url + 'get-my-info/'

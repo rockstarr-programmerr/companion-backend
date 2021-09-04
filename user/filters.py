@@ -24,7 +24,9 @@ class UserFilter(filters.FilterSet):
         for event in events:
             members.extend(event.members.all())
         member_pks = [member.pk for member in members]
-        return parent.filter(pk__in=member_pks)
+
+        pks = member_pks + [self.request.user.pk]
+        return parent.filter(pk__in=pks)
 
 
 class UserSearchFilter(filters.FilterSet):
