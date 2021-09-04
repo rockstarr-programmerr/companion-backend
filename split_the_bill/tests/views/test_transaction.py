@@ -260,6 +260,132 @@ class TransactionReadTestCase(_TransactionTestCase):
         self.assertListEqual(TransactionViewSet.ordering, ['-create_time'])
 
 
+class TransactionValidationTestCase(_TransactionTestCase):
+    @parameterized.expand([
+        ['post'],
+        ['put'],
+        ['patch'],
+    ])
+    def test__validate__from_to_users_are_different(self, method):
+        req_method = getattr(self.client, method)
+        if method == 'post':
+            url = self.url
+        else:
+            transaction = random.choice(self.event1.transactions.all())
+            url = self.get_detail_url(transaction.pk)
+
+        user = random.choice(self.event1.members.all())
+        data = {
+            'event': self.get_event_detail_url(self.event1.pk),
+            'transaction_type': Transaction.Types.USER_TO_USER,
+            'from_user': self.get_user_detail_url(user.pk),
+            'to_user': self.get_user_detail_url(user.pk),
+            'amount': random.randint(1_000, 1_000_000),
+        }
+        self.client.force_authenticate(user=user)
+        res = req_method(url, data)
+        self.assertEqual(res.status_code, 400)
+        self.assertDictEqual(res.json(), {'non_field_errors': ['`from_user` and `to_user` must be different.']})
+
+    @parameterized.expand([
+        ['post'],
+        ['put'],
+        ['patch'],
+    ])
+    def test__validate__user_is_event_member(self, method):
+        req_method = getattr(self.client, method)
+        if method == 'post':
+            url = self.url
+        else:
+            transaction = random.choice(self.event1.transactions.all())
+            url = self.get_detail_url(transaction.pk)
+
+        from_user = random.choice(self.event1.members.all())
+        to_user = random.choice(self.event2.members.exclude(pk__in=[member.pk for member in self.share_members]))
+        data = {
+            'event': self.get_event_detail_url(self.event1.pk),
+            'transaction_type': Transaction.Types.USER_TO_USER,
+            'from_user': self.get_user_detail_url(from_user.pk),
+            'to_user': self.get_user_detail_url(to_user.pk),
+            'amount': random.randint(1_000, 1_000_000),
+        }
+        self.client.force_authenticate(user=self.creator1)
+        res = req_method(url, data)
+        self.assertEqual(res.status_code, 400)
+        self.assertDictEqual(res.json(), {'non_field_errors': ["`from_user` and `to_user` must be one of event's members."]})
+
+    @parameterized.expand([
+        ['post', Transaction.Types.USER_TO_USER, True, False, 'If `transaction_type` is "user_to_user" then both `from_user` and `to_user` are required.'],
+        ['post', Transaction.Types.USER_TO_USER, False, True, 'If `transaction_type` is "user_to_user" then both `from_user` and `to_user` are required.'],
+        ['post', Transaction.Types.USER_TO_FUND, False, False, 'If `transaction_type` is "user_to_fund" then `from_user` is required and `to_user` must be null.'],
+        ['post', Transaction.Types.USER_TO_FUND, False, True, 'If `transaction_type` is "user_to_fund" then `from_user` is required and `to_user` must be null.'],
+        ['post', Transaction.Types.FUND_TO_USER, False, False, 'If `transaction_type` is "fund_to_user" then `to_user` is required and `from_user` must be null.'],
+        ['post', Transaction.Types.FUND_TO_USER, True, False, 'If `transaction_type` is "fund_to_user" then `to_user` is required and `from_user` must be null.'],
+        ['post', Transaction.Types.USER_EXPENSE, False, False, 'If `transaction_type` is "user_expense" then `from_user` is required and `to_user` must be null.'],
+        ['post', Transaction.Types.USER_EXPENSE, False, True, 'If `transaction_type` is "user_expense" then `from_user` is required and `to_user` must be null.'],
+        ['post', Transaction.Types.FUND_EXPENSE, True, True, 'If `transaction_type` is "fund_expense" then both `from_user` and `to_user` must be null.'],
+        ['post', Transaction.Types.FUND_EXPENSE, False, True, 'If `transaction_type` is "fund_expense" then both `from_user` and `to_user` must be null.'],
+        ['post', Transaction.Types.FUND_EXPENSE, True, False, 'If `transaction_type` is "fund_expense" then both `from_user` and `to_user` must be null.'],
+
+        ['put', Transaction.Types.USER_TO_USER, True, False, 'If `transaction_type` is "user_to_user" then both `from_user` and `to_user` are required.'],
+        ['put', Transaction.Types.USER_TO_USER, False, True, 'If `transaction_type` is "user_to_user" then both `from_user` and `to_user` are required.'],
+        ['put', Transaction.Types.USER_TO_FUND, False, False, 'If `transaction_type` is "user_to_fund" then `from_user` is required and `to_user` must be null.'],
+        ['put', Transaction.Types.USER_TO_FUND, False, True, 'If `transaction_type` is "user_to_fund" then `from_user` is required and `to_user` must be null.'],
+        ['put', Transaction.Types.FUND_TO_USER, False, False, 'If `transaction_type` is "fund_to_user" then `to_user` is required and `from_user` must be null.'],
+        ['put', Transaction.Types.FUND_TO_USER, True, False, 'If `transaction_type` is "fund_to_user" then `to_user` is required and `from_user` must be null.'],
+        ['put', Transaction.Types.USER_EXPENSE, False, False, 'If `transaction_type` is "user_expense" then `from_user` is required and `to_user` must be null.'],
+        ['put', Transaction.Types.USER_EXPENSE, False, True, 'If `transaction_type` is "user_expense" then `from_user` is required and `to_user` must be null.'],
+        ['put', Transaction.Types.FUND_EXPENSE, True, True, 'If `transaction_type` is "fund_expense" then both `from_user` and `to_user` must be null.'],
+        ['put', Transaction.Types.FUND_EXPENSE, False, True, 'If `transaction_type` is "fund_expense" then both `from_user` and `to_user` must be null.'],
+        ['put', Transaction.Types.FUND_EXPENSE, True, False, 'If `transaction_type` is "fund_expense" then both `from_user` and `to_user` must be null.'],
+
+        ['patch', Transaction.Types.USER_TO_USER, True, False, 'If `transaction_type` is "user_to_user" then both `from_user` and `to_user` are required.'],
+        ['patch', Transaction.Types.USER_TO_USER, False, True, 'If `transaction_type` is "user_to_user" then both `from_user` and `to_user` are required.'],
+        ['patch', Transaction.Types.USER_TO_FUND, False, False, 'If `transaction_type` is "user_to_fund" then `from_user` is required and `to_user` must be null.'],
+        ['patch', Transaction.Types.USER_TO_FUND, False, True, 'If `transaction_type` is "user_to_fund" then `from_user` is required and `to_user` must be null.'],
+        ['patch', Transaction.Types.FUND_TO_USER, False, False, 'If `transaction_type` is "fund_to_user" then `to_user` is required and `from_user` must be null.'],
+        ['patch', Transaction.Types.FUND_TO_USER, True, False, 'If `transaction_type` is "fund_to_user" then `to_user` is required and `from_user` must be null.'],
+        ['patch', Transaction.Types.USER_EXPENSE, False, False, 'If `transaction_type` is "user_expense" then `from_user` is required and `to_user` must be null.'],
+        ['patch', Transaction.Types.USER_EXPENSE, False, True, 'If `transaction_type` is "user_expense" then `from_user` is required and `to_user` must be null.'],
+        ['patch', Transaction.Types.FUND_EXPENSE, True, True, 'If `transaction_type` is "fund_expense" then both `from_user` and `to_user` must be null.'],
+        ['patch', Transaction.Types.FUND_EXPENSE, False, True, 'If `transaction_type` is "fund_expense" then both `from_user` and `to_user` must be null.'],
+        ['patch', Transaction.Types.FUND_EXPENSE, True, False, 'If `transaction_type` is "fund_expense" then both `from_user` and `to_user` must be null.'],
+    ])
+    def test__validate__transaction_logic(self, method, transaction_type, has_from_user, has_to_user, expected_msg):
+        req_method = getattr(self.client, method)
+        if method == 'post':
+            url = self.url
+        else:
+            transaction = random.choice(self.event1.transactions.all())
+            url = self.get_detail_url(transaction.pk)
+
+        members = self.event1.members.all()
+        self.client.force_authenticate(user=self.creator1)
+
+        from_user = None
+        to_user = None
+        if has_from_user:
+            from_user = random.choice(members)
+        if has_to_user:
+            to_user = random.choice(members)
+
+        while from_user and to_user and from_user == to_user:
+            to_user = random.choice(members)
+
+        data = {
+            'event': self.get_event_detail_url(self.event1.pk),
+            'transaction_type': transaction_type,
+            'from_user': self.get_user_detail_url(from_user.pk) if from_user else None,
+            'to_user': self.get_user_detail_url(to_user.pk) if to_user else None,
+            'amount': random.randint(10_000, 1_000_000),
+        }
+
+        res = req_method(url, data)
+        self.assertEqual(res.status_code, 400)
+        err_msg = res.json()['non_field_errors'][0]
+        self.assertEqual(err_msg, expected_msg)
+
+
 class TransactionCreateTestCase(_TransactionTestCase):
     @parameterized.expand([
         [Transaction.Types.USER_TO_USER, True, True],
@@ -342,51 +468,25 @@ class TransactionCreateTestCase(_TransactionTestCase):
         self.assertEqual(res.status_code, 201)
         self.assertTrue(Transaction.objects.filter(amount=34658734).exists())
 
-    def test__post_validate__from_to_users_are_different(self):
-        user = random.choice(self.event1.members.all())
-        data = {
-            'event': self.get_event_detail_url(self.event1.pk),
-            'transaction_type': Transaction.Types.USER_TO_USER,
-            'from_user': self.get_user_detail_url(user.pk),
-            'to_user': self.get_user_detail_url(user.pk),
-            'amount': random.randint(1_000, 1_000_000),
-        }
-        self.client.force_authenticate(user=user)
-        res = self.client.post(self.url, data)
-        self.assertEqual(res.status_code, 400)
-        self.assertDictEqual(res.json(), {'non_field_errors': ['`from_user` and `to_user` must be different.']})
 
-    def test__post_validate__user_is_event_member(self):
-        from_user = random.choice(self.event1.members.all())
-        to_user = random.choice(self.event2.members.exclude(pk__in=[member.pk for member in self.share_members]))
-        data = {
-            'event': self.get_event_detail_url(self.event1.pk),
-            'transaction_type': Transaction.Types.USER_TO_USER,
-            'from_user': self.get_user_detail_url(from_user.pk),
-            'to_user': self.get_user_detail_url(to_user.pk),
-            'amount': random.randint(1_000, 1_000_000),
-        }
-        self.client.force_authenticate(user=self.creator1)
-        res = self.client.post(self.url, data)
-        self.assertEqual(res.status_code, 400)
-        self.assertDictEqual(res.json(), {'non_field_errors': ["`from_user` and `to_user` must be one of event's members."]})
-
+class TransactionUpdateTestCase(_TransactionTestCase):
     @parameterized.expand([
-        [Transaction.Types.USER_TO_USER, True, False, 'If `transaction_type` is "user_to_user" then both `from_user` and `to_user` are required.'],
-        [Transaction.Types.USER_TO_USER, False, True, 'If `transaction_type` is "user_to_user" then both `from_user` and `to_user` are required.'],
-        [Transaction.Types.USER_TO_FUND, False, False, 'If `transaction_type` is "user_to_fund" then `from_user` is required and `to_user` must be null.'],
-        [Transaction.Types.USER_TO_FUND, False, True, 'If `transaction_type` is "user_to_fund" then `from_user` is required and `to_user` must be null.'],
-        [Transaction.Types.FUND_TO_USER, False, False, 'If `transaction_type` is "fund_to_user" then `to_user` is required and `from_user` must be null.'],
-        [Transaction.Types.FUND_TO_USER, True, False, 'If `transaction_type` is "fund_to_user" then `to_user` is required and `from_user` must be null.'],
-        [Transaction.Types.USER_EXPENSE, False, False, 'If `transaction_type` is "user_expense" then `from_user` is required and `to_user` must be null.'],
-        [Transaction.Types.USER_EXPENSE, False, True, 'If `transaction_type` is "user_expense" then `from_user` is required and `to_user` must be null.'],
-        [Transaction.Types.FUND_EXPENSE, True, True, 'If `transaction_type` is "fund_expense" then both `from_user` and `to_user` must be null.'],
-        [Transaction.Types.FUND_EXPENSE, False, True, 'If `transaction_type` is "fund_expense" then both `from_user` and `to_user` must be null.'],
-        [Transaction.Types.FUND_EXPENSE, True, False, 'If `transaction_type` is "fund_expense" then both `from_user` and `to_user` must be null.'],
+        ['put', Transaction.Types.USER_TO_USER, True, True],
+        ['put', Transaction.Types.USER_TO_FUND, True, False],
+        ['put', Transaction.Types.FUND_TO_USER, False, True],
+        ['put', Transaction.Types.USER_EXPENSE, True, False],
+        ['put', Transaction.Types.FUND_EXPENSE, False, False],
+        ['patch', Transaction.Types.USER_TO_USER, True, True],
+        ['patch', Transaction.Types.USER_TO_FUND, True, False],
+        ['patch', Transaction.Types.FUND_TO_USER, False, True],
+        ['patch', Transaction.Types.USER_EXPENSE, True, False],
+        ['patch', Transaction.Types.FUND_EXPENSE, False, False],
     ])
-    def test__post_validate__transaction_logic(self, transaction_type, has_from_user, has_to_user, expected_msg):
+    def test__put_and_patch(self, method, transaction_type, has_from_user, has_to_user):
+        transaction = random.choice(self.event1.transactions.all())
         members = self.event1.members.all()
-        self.client.force_authenticate(user=self.creator1)
+        user = random.choice(members)
+        self.client.force_authenticate(user=user)
 
         from_user = None
         to_user = None
@@ -398,6 +498,7 @@ class TransactionCreateTestCase(_TransactionTestCase):
         while from_user and to_user and from_user == to_user:
             to_user = random.choice(members)
 
+        url = self.get_detail_url(transaction.pk)
         data = {
             'event': self.get_event_detail_url(self.event1.pk),
             'transaction_type': transaction_type,
@@ -406,7 +507,58 @@ class TransactionCreateTestCase(_TransactionTestCase):
             'amount': random.randint(10_000, 1_000_000),
         }
 
-        res = self.client.post(self.url, data)
-        self.assertEqual(res.status_code, 400)
-        err_msg = res.json()['non_field_errors'][0]
-        self.assertEqual(err_msg, expected_msg)
+        req_method = getattr(self.client, method)
+        res = req_method(url, data)
+        actual = res.json()
+
+        # Check DB
+        instance = Transaction.objects.get(pk=transaction.pk)
+        self.assertEqual(instance.event, self.event1)
+        self.assertEqual(instance.transaction_type, transaction_type)
+        self.assertEqual(instance.from_user, from_user)
+        self.assertEqual(instance.to_user, to_user)
+        self.assertEqual(instance.amount, data['amount'])
+        now = timezone.now()
+        self.assertAlmostEqual(instance.update_time, now, delta=timedelta(seconds=3))
+
+        # Check Response
+        expected = json.dumps(
+            self.get_transaction_json(instance, res.wsgi_request)
+        )
+        self.assertJSONEqual(expected, actual)
+
+    @parameterized.expand([
+        ['put'],
+        ['patch'],
+    ])
+    def test__put_and_patch__permission(self, method):
+        transaction = random.choice(self.event1.transactions.all())
+        url = self.get_detail_url(transaction.pk)
+        req_method = getattr(self.client, method)
+        data = {
+            'event': self.get_event_detail_url(self.event1.pk),
+            'transaction_type': Transaction.Types.FUND_EXPENSE,
+            'from_user': None,
+            'to_user': None,
+            'amount': 9834765,
+        }
+
+        # Unauthenticated user cannot access
+        self.client.force_authenticate(user=None)
+        res = req_method(url, data)
+        self.assertEqual(res.status_code, 401)
+
+        # Member of 1 event cannot update transaction for another event
+        user = random.choice(self.event2.members.exclude(pk__in=[member.pk for member in self.share_members]))
+        self.client.force_authenticate(user=user)
+        res = req_method(url, data)
+        self.assertEqual(res.status_code, 404)
+
+        self.assertFalse(Transaction.objects.filter(amount=9834765).exists())
+
+        # Members can update transaction for their event
+        user = random.choice(self.event1.members.all())
+        self.client.force_authenticate(user=user)
+        res = req_method(url, data)
+        self.assertEqual(res.status_code, 200)
+        self.assertTrue(Transaction.objects.filter(amount=9834765).exists())
