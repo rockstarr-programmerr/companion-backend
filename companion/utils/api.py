@@ -18,9 +18,10 @@ def extra_action_urls(ViewSet):
                     continue
 
                 url_name = action.url_name
-                reverse_name = url_name.replace('_', '-')
-                url = self.reverse_action(reverse_name)
-                extra_action_urls[url_name] = url
+                url = self.reverse_action(url_name)
+
+                key = url_name.replace('-', '_')
+                extra_action_urls[key] = url
 
             if not isinstance(response.data, dict):
                 response.data = {'results': response.data}

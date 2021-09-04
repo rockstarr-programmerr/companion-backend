@@ -1,13 +1,12 @@
 import json
-from model_bakery import baker
-from faker import Faker
-from freezegun import freeze_time
-from parameterized import parameterized
-
 
 from django.contrib.auth import get_user_model
-from rest_framework.test import APITestCase
+from faker import Faker
+from freezegun import freeze_time
+from model_bakery import baker
+from parameterized import parameterized
 from rest_framework.reverse import reverse
+from rest_framework.test import APITestCase
 
 from split_the_bill.models import Group
 
