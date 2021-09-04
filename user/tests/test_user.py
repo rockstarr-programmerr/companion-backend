@@ -17,22 +17,23 @@ fake = Faker()
 class _UserTestCase(APITestCase):
     url = reverse('user-list')
 
-    def setUp(self):
+    def setUp(self, *args, **kwargs):
         super().setUp()
 
-        self.creator1 = baker.make(User)
-        self.members1 = baker.make(User, _quantity=3)
-        self.event1 = baker.make(Event, creator=self.creator1)
-        self.event1.members.add(self.creator1, *self.members1)
+        if kwargs.get('create_data', True):
+            self.creator1 = baker.make(User)
+            self.members1 = baker.make(User, _quantity=3)
+            self.event1 = baker.make(Event, creator=self.creator1)
+            self.event1.members.add(self.creator1, *self.members1)
 
-        self.creator2 = baker.make(User)
-        self.members2 = baker.make(User, _quantity=3)
-        self.event2 = baker.make(Event, creator=self.creator2)
-        self.event2.members.add(self.creator2, *self.members2)
+            self.creator2 = baker.make(User)
+            self.members2 = baker.make(User, _quantity=3)
+            self.event2 = baker.make(Event, creator=self.creator2)
+            self.event2.members.add(self.creator2, *self.members2)
 
-        self.share_members = baker.make(User, _quantity=3)
-        self.event1.members.add(*self.share_members)
-        self.event2.members.add(*self.share_members)
+            self.share_members = baker.make(User, _quantity=3)
+            self.event1.members.add(*self.share_members)
+            self.event2.members.add(*self.share_members)
 
     @staticmethod
     def get_user_json(user_or_pk, request=None):
@@ -52,21 +53,25 @@ class _UserTestCase(APITestCase):
         }
 
     @staticmethod
-    def get_pagination_json(results, count=None, next=None, previous=None, request=None):
+    def get_pagination_json(results, count=None, next=None, previous=None, request=None, extra_actions=True):
         if count is None:
             count = len(results)
 
-        return {
+        response = {
             'count': count,
             'next': next,
             'previous': previous,
             'results': results,
-            'extra_action_urls': {
+        }
+
+        if extra_actions:
+            response['extra_action_urls'] = {
                 'my_info': reverse('user-my-info', request=request),
                 'register': reverse('user-register', request=request),
                 'search': reverse('user-search', request=request),
             }
-        }
+
+        return response
 
     @staticmethod
     def get_detail_url(pk, request=None):
@@ -237,71 +242,28 @@ class UserUpdateTestCase(_UserTestCase):
         self.assertEqual(res.status_code, 200)
 
 
-# class UserInfoTestCase(APITestCase):
-#     url = '/users/'
-#     get_info_url = url + 'get-my-info/'
-#     update_info_url = url + 'update-my-info/'
+class UserNotAllowedMethodTestCase(_UserTestCase):
+    @parameterized.expand([
+        ['post', False],
+        ['delete', True],
+    ])
+    def test_method_not_allowed(self, method, is_detail):
+        req_method = getattr(self.client, method)
+        user = baker.make(User)
+        if is_detail:
+            url = self.get_detail_url(user.pk)
+        else:
+            url = self.url
 
-#     def setUp(self):
-#         super().setUp()
-#         self.user = baker.make(User)
-#         self.client.force_authenticate(user=self.user)
-
-#     def test__get_my_info(self):
-#         res = self.client.get(self.get_info_url)
-#         self.assertEqual(res.status_code, 200)
-
-#         actual = res.json()
-#         expected = json.dumps({
-#             'username': self.user.username,
-#             'email': self.user.email,
-#         })
-
-#         self.assertJSONEqual(expected, actual)
-
-#     @parameterized.expand([
-#         ['post'],
-#         ['put'],
-#         ['patch'],
-#     ])
-#     def test__update_my_info(self, method):
-#         username = fake.text(max_nb_chars=150)
-#         email = fake.email()
-
-#         req_method = getattr(self.client, method)
-#         res = req_method(self.update_info_url, {'username': username, 'email': email})
-#         self.assertEqual(res.status_code, 200)
-
-#         # Check response
-#         actual = res.json()
-#         expected = json.dumps({
-#             'username': username,
-#             'email': email,
-#         })
-#         self. assertJSONEqual(expected, actual)
-
-#         # Check DB
-#         self.user.refresh_from_db()
-#         self.assertEqual(self.user.username, username)
-#         self.assertEqual(self.user.email, email)
-
-#     @parameterized.expand([
-#         ['get', get_info_url],
-#         ['post', update_info_url],
-#         ['put', update_info_url],
-#         ['patch', update_info_url],
-#     ])
-#     def test__unauthenticated_user_cannot_access(self, method, url):
-#         self.client.force_authenticate(user=None)
-#         req_method = getattr(self.client, method)
-#         res = req_method(url)
-#         self.assertEqual(res.status_code, 401)
+        self.client.force_authenticate(user=user)
+        res = req_method(url)
+        self.assertEqual(res.status_code, 405)
 
 
 class UserRegisterTestCase(APITestCase):
-    url = '/users/register/'
-    login_url = '/users/login/'
-    get_info_url = '/users/my-info/'
+    url = reverse('user-register')
+    login_url = reverse('token_obtain_pair')
+    my_info_url = reverse('user-my-info')
 
     def test__register_user(self):
         self.client.force_authenticate(user=None)
@@ -332,5 +294,122 @@ class UserRegisterTestCase(APITestCase):
         access_token = data.get('access')
         self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {access_token}')
 
-        res = self.client.get(self.get_info_url)
+        res = self.client.get(self.my_info_url)
         self.assertEqual(res.status_code, 200)
+
+
+class UserMyInfoTestCase(_UserTestCase):
+    url = reverse('user-list')
+    my_info_url = reverse('user-my-info')
+
+    def setUp(self):
+        super().setUp(create_data=False)
+        self.user = baker.make(User)
+        self.client.force_authenticate(user=self.user)
+
+    def test__get_my_info(self):
+        res = self.client.get(self.my_info_url)
+        self.assertEqual(res.status_code, 200)
+
+        actual = res.json()
+        expected = json.dumps(
+            self.get_user_json(self.user.pk, request=res.wsgi_request)
+        )
+
+        self.assertJSONEqual(expected, actual)
+
+    @parameterized.expand([
+        ['put'],
+        ['patch'],
+    ])
+    def test__update_my_info(self, method):
+        username = fake.text(max_nb_chars=150)
+        email = fake.email()
+
+        req_method = getattr(self.client, method)
+        res = req_method(self.my_info_url, {'username': username, 'email': email})
+        self.assertEqual(res.status_code, 200)
+
+        # Check DB
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.username, username)
+        self.assertEqual(self.user.email, email)
+
+        # Check response
+        actual = res.json()
+        expected = json.dumps(
+            self.get_user_json(self.user.pk, request=res.wsgi_request)
+        )
+        self.assertJSONEqual(expected, actual)
+
+    @parameterized.expand([
+        ['get'],
+        ['put'],
+        ['patch'],
+    ])
+    def test__unauthenticated_user_cannot_access(self, method):
+        self.client.force_authenticate(user=None)
+        req_method = getattr(self.client, method)
+        res = req_method(self.my_info_url)
+        self.assertEqual(res.status_code, 401)
+
+    @parameterized.expand([
+        ['post'],
+        ['delete'],
+    ])
+    def test__method_not_allowed(self, method):
+        self.client.force_authenticate(user=self.user)
+        req_method = getattr(self.client, method)
+        res = req_method(self.my_info_url)
+        self.assertEqual(res.status_code, 405)
+
+
+class UserSearchTestCase(_UserTestCase):
+    url = reverse('user-search')
+
+    def setUp(self):
+        super().setUp(create_data=False)
+        baker.make(User, username='Carl Johnson')
+        baker.make(User, username='BigSmoke')
+        baker.make(User, username='Sweet')
+        baker.make(User, username='Ryder')
+        baker.make(User, username='Brian')
+        baker.make(User, username='BigBear')
+        baker.make(User, username='LittleBear')
+
+    @parameterized.expand([
+        ['big', ['BigSmoke', 'BigBear']],
+        ['bear', ['BigBear', 'LittleBear']],
+        ['arl', ['Carl Johnson']],
+        ['The Truth', []],
+    ])
+    def test__search(self, query, expected_usernames):
+        user = User.objects.first()
+        self.client.force_authenticate(user=user)
+        data = {'username__icontains': query}
+        res = self.client.get(self.url, data)
+        self.assertEqual(res.status_code, 200)
+
+        expected_usernames.sort()
+        actual = res.json()
+        expected = json.dumps(self.get_pagination_json([
+            {'username': username}
+            for username in expected_usernames
+        ], extra_actions=False))
+        self.assertJSONEqual(expected, actual)
+
+    def test__search_permission(self):
+        data = {'username__icontains': 'something'}
+
+        # Unauthenticated user cannot access
+        self.client.force_authenticate(user=None)
+        res = self.client.get(self.url, data)
+        self.assertEqual(res.status_code, 401)
+
+    def test__validation(self):
+        user = User.objects.first()
+        self.client.force_authenticate(user=user)
+        data = {'username__icontains': 'ab'}
+        res = self.client.get(self.url, data)
+        self.assertEqual(res.status_code, 400)
+        self.assertDictEqual(res.json(), {'username__icontains': ['Ensure this value has at least 3 characters (it has 2).']})

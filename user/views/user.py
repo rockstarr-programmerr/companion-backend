@@ -7,6 +7,7 @@ from rest_framework.viewsets import GenericViewSet
 
 from companion.utils.api import extra_action_urls
 from user.filters import UserFilter, UserSearchFilter
+from user.pagination import UserSearchPagination
 from user.permissions import IsSelfOrReadOnly
 from user.serializers.user import (RegisterSerializer, UserSearchSerializer,
                                    UserSerializer)
@@ -58,6 +59,7 @@ class UserViewSet(mixins.RetrieveModelMixin,
         detail=False, methods=['GET'], url_path='search',
         serializer_class=UserSearchSerializer,
         filterset_class=UserSearchFilter,
+        pagination_class=UserSearchPagination,
         ordering_fields=['username']
     )
     def search(self, request):
@@ -65,8 +67,9 @@ class UserViewSet(mixins.RetrieveModelMixin,
         When searching by username, only username are returned, not all user's info
         """
         queryset = self.filter_queryset(self.get_queryset())
-        serializer = self.get_serializer(instance=queryset, many=True)
-        return Response(serializer.data)
+        page = self.paginate_queryset(queryset)
+        serializer = self.get_serializer(instance=page, many=True)
+        return self.get_paginated_response(serializer.data)
 
     @action(
         detail=False, methods=['GET', 'PUT', 'PATCH'],
