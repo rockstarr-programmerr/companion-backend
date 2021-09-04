@@ -12,6 +12,9 @@ from rest_framework.reverse import reverse
 from rest_framework.test import APITestCase
 
 from split_the_bill.models import Event, Transaction
+from split_the_bill.utils.url import update_url_params
+from split_the_bill.utils.datetime import format_iso
+from split_the_bill.views import EventViewSet
 
 fake = Faker()
 User = get_user_model()
@@ -37,37 +40,34 @@ class _EventViewSetTestCase(APITestCase):
             self.event2.members.add(self.creator, *self.members[2:])
 
     def get_event1_json(self, request):
-        pk = self.event1.pk
-        return {
-            'url': reverse('event-detail', kwargs={'pk': pk}, request=request),
-            'pk': pk,
-            'name': self.event1.name,
-            'creator': self.get_user_json(self.creator),
-            'members': [
-                self.get_user_json(self.creator),
-                self.get_user_json(self.members[0]),
-                self.get_user_json(self.members[1]),
-            ],
-            'create_time': EVENT1_CREATE_TIME
-        }
+        return self.get_event_json(self.event1, request)
 
     def get_event2_json(self, request):
-        pk = self.event2.pk
+        return self.get_event_json(self.event2, request)
+
+    def get_event_json(self, event, request):
+        members = event.members.all()
+        transactions_url = reverse('transaction-list', request=request)
+        transactions_url = update_url_params(transactions_url, {'event': event.pk})
         return {
-            'url': reverse('event-detail', kwargs={'pk': pk}, request=request),
-            'pk': pk,
-            'name': self.event2.name,
-            'creator': self.get_user_json(self.creator),
+            'url': reverse('event-detail', kwargs={'pk': event.pk}, request=request),
+            'pk': event.pk,
+            'name': event.name,
+            'creator': self.get_user_json(event.creator, request=request),
             'members': [
-                self.get_user_json(self.creator),
-                self.get_user_json(self.members[2]),
-                self.get_user_json(self.members[3]),
+                self.get_user_json(member, request=request)
+                for member in members
             ],
-            'create_time': EVENT2_CREATE_TIME
+            'create_time': format_iso(event.create_time),
+            'transactions_url': transactions_url,
+            'extra_action_urls': {
+                'add_members': reverse('event-add-members', kwargs={'pk': event.pk}, request=request),
+                'remove_members': reverse('event-remove-members', kwargs={'pk': event.pk}, request=request),
+            },
         }
 
     @staticmethod
-    def get_user_json(user_or_pk):
+    def get_user_json(user_or_pk, request=None):
         if not user_or_pk:
             return None
         elif isinstance(user_or_pk, int):
@@ -76,9 +76,11 @@ class _EventViewSetTestCase(APITestCase):
             user = user_or_pk
 
         return {
+            'url': reverse('user-detail', kwargs={'pk': user.pk}, request=request),
             'pk': user.pk,
             'username': user.username,
             'email': user.email,
+            'avatar': user.avatar.path if user.avatar else None,
         }
 
     @staticmethod
@@ -108,8 +110,8 @@ class EventReadTestCase(_EventViewSetTestCase):
 
         actual = res.json()
         results = [
-            self.get_event1_json(res.wsgi_request),
             self.get_event2_json(res.wsgi_request),
+            self.get_event1_json(res.wsgi_request),
         ]
         expected = json.dumps(self.get_pagination_json(results))
 
@@ -183,6 +185,10 @@ class EventReadTestCase(_EventViewSetTestCase):
         res = self.client.get(event3_url)
         self.assertEqual(res.status_code, 401)
 
+    def test__filters_and_ordering(self):
+        self.assertListEqual(EventViewSet.ordering_fields, ['name', 'create_time', 'update_time'])
+        self.assertListEqual(EventViewSet.ordering, ['-create_time'])
+
 
 class EventCreateTestCase(_EventViewSetTestCase):
     @freeze_time(DEFAULT_TIME)
@@ -194,23 +200,6 @@ class EventCreateTestCase(_EventViewSetTestCase):
         res = self.client.post(URL, {'name': event_name})
         self.assertEqual(res.status_code, 201)
 
-        # Check response
-        actual = res.json()
-        self.assertIn('pk', actual.keys())
-        pk = actual.pop('pk')
-
-        expected_data = json.dumps({
-            'url': reverse('event-detail', kwargs={'pk': pk}, request=res.wsgi_request),
-            'name': event_name,
-            'creator': self.get_user_json(user),
-            'members': [
-                self.get_user_json(user),
-            ],
-            'create_time': DEFAULT_TIME
-        })
-
-        self.assertJSONEqual(expected_data, actual)
-
         # Check DB
         event = Event.objects.filter(name=event_name).first()
         self.assertIsNotNone(event)
@@ -220,6 +209,14 @@ class EventCreateTestCase(_EventViewSetTestCase):
         members = event.members.all()
         self.assertEqual(len(members), 1)
         self.assertIn(user, members)
+
+        # Check response
+        actual = res.json()
+        expected_data = json.dumps(
+            self.get_event_json(event, res.wsgi_request)
+        )
+
+        self.assertJSONEqual(expected_data, actual)
 
     def test__post_permission(self):
         """
@@ -253,25 +250,6 @@ class EventUpdateTestCase(_EventViewSetTestCase):
         res = req_method(url, {'name': event_name})
         self.assertEqual(res.status_code, 200)
 
-        # Check response
-        actual = res.json()
-        self.assertIn('pk', actual.keys())
-        pk = actual.pop('pk')
-
-        expected_data = json.dumps({
-            'url': reverse('event-detail', kwargs={'pk': pk}, request=res.wsgi_request),
-            'name': event_name,
-            'creator': self.get_user_json(self.creator),
-            'members': [
-                self.get_user_json(self.creator),
-                self.get_user_json(self.members[0]),
-                self.get_user_json(self.members[1]),
-            ],
-            'create_time': EVENT1_CREATE_TIME
-        })
-
-        self.assertJSONEqual(expected_data, actual)
-
         # Check DB
         event = Event.objects.filter(name=event_name).first()
         self.assertIsNotNone(event)
@@ -281,6 +259,14 @@ class EventUpdateTestCase(_EventViewSetTestCase):
         members = event.members.all()
         self.assertEqual(len(members), 3)
         self.assertIn(self.creator, members)
+
+        # Check response
+        actual = res.json()
+        expected_data = json.dumps(
+            self.get_event_json(event, res.wsgi_request)
+        )
+
+        self.assertJSONEqual(expected_data, actual)
 
     @parameterized.expand([
         ['put'],
@@ -404,7 +390,7 @@ class EventAddRemoveMembersTestCase(_EventViewSetTestCase):
 
         url = self.get_add_members_url(self.event1.pk)
         data = {
-            'member_pks': [member.pk for member in new_members]
+            'member_usernames': [member.username for member in new_members]
         }
         res = self.client.post(url, data)
         self.assertEqual(res.status_code, 200)
@@ -437,30 +423,31 @@ class EventAddRemoveMembersTestCase(_EventViewSetTestCase):
             self.assertNotIn(member, members)
 
     @parameterized.expand([
-        ['add'],
-        ['remove'],
+        ['add', 'member_usernames'],
+        ['remove', 'member_pks'],
     ])
-    def test__add_or_remove_members_validations(self, action):
+    def test__add_or_remove_members_validations(self, action, param_key):
         self.client.force_authenticate(user=self.creator)
         url = getattr(self, f'get_{action}_members_url')(self.event1.pk)
 
-        # member_pks is empty
-        data = {'member_pks': []}
+        # param_key is empty
+        data = {param_key: []}
         res = self.client.post(url, data)
         self.assertEqual(res.status_code, 400)
-        self.assertDictEqual(res.json(), {'member_pks': ['This list may not be empty.']})
+        self.assertDictEqual(res.json(), {param_key: ['This list may not be empty.']})
 
-        # member_pk < 1
-        data = {'member_pks': [1, 2, 3, -1]}
+        # More than 100 param_key
+        data = {param_key: list(range(1, 102))}
         res = self.client.post(url, data)
         self.assertEqual(res.status_code, 400)
-        self.assertDictEqual(res.json(), {'member_pks': {'3': ['Ensure this value is greater than or equal to 1.']}})
+        self.assertDictEqual(res.json(), {param_key: ['Ensure this field has no more than 100 elements.']})
 
-        # More than 100 member_pks
-        data = {'member_pks': list(range(1, 102))}
-        res = self.client.post(url, data)
-        self.assertEqual(res.status_code, 400)
-        self.assertDictEqual(res.json(), {'member_pks': ['Ensure this field has no more than 100 elements.']})
+        if action == 'remove':
+            # member_pk < 1
+            data = {param_key: [1, 2, 3, -1]}
+            res = self.client.post(url, data)
+            self.assertEqual(res.status_code, 400)
+            self.assertDictEqual(res.json(), {param_key: {'3': ['Ensure this value is greater than or equal to 1.']}})
 
     def test__cannot_remove_yourself_from_event(self):
         self.client.force_authenticate(user=self.creator)
@@ -479,7 +466,7 @@ class EventAddRemoveMembersTestCase(_EventViewSetTestCase):
         """
         new_user = baker.make(User)
         url = self.get_add_members_url(self.event1.pk)
-        data = {'member_pks': [new_user.pk]}
+        data = {'member_usernames': [new_user.username]}
 
         # Unauthenticated user cannot access
         res = self.client.post(url, data)
@@ -523,172 +510,172 @@ class EventAddRemoveMembersTestCase(_EventViewSetTestCase):
         self.assertNotIn(member, self.event1.members.all())
 
 
-class EventAddRemoveTransactionTestCase(_EventViewSetTestCase):
-    CREATOR_PK = 5426432
-    MEMBER_1_PK = 874437
-    MEMBER_2_PK = 76493273
+# class EventAddRemoveTransactionTestCase(_EventViewSetTestCase):
+#     CREATOR_PK = 5426432
+#     MEMBER_1_PK = 874437
+#     MEMBER_2_PK = 76493273
 
-    def setUp(self):
-        super().setUp()
-        self.creator = baker.make(User, pk=self.CREATOR_PK)
-        self.member_1 = baker.make(User, pk=self.MEMBER_1_PK)
-        self.member_2 = baker.make(User, pk=self.MEMBER_2_PK)
-        self.event = baker.make(Event, creator=self.creator)
-        self.event.members.add(self.creator, self.member_1, self.member_2)
+#     def setUp(self):
+#         super().setUp()
+#         self.creator = baker.make(User, pk=self.CREATOR_PK)
+#         self.member_1 = baker.make(User, pk=self.MEMBER_1_PK)
+#         self.member_2 = baker.make(User, pk=self.MEMBER_2_PK)
+#         self.event = baker.make(Event, creator=self.creator)
+#         self.event.members.add(self.creator, self.member_1, self.member_2)
 
-    @parameterized.expand([
-        ['user_to_user', MEMBER_1_PK, MEMBER_2_PK, False, False, False],
-        ['user_to_user', CREATOR_PK, MEMBER_1_PK, False, False, False],
-        ['user_to_user', CREATOR_PK, MEMBER_2_PK, False, False, False],
+#     @parameterized.expand([
+#         ['user_to_user', MEMBER_1_PK, MEMBER_2_PK, False, False, False],
+#         ['user_to_user', CREATOR_PK, MEMBER_1_PK, False, False, False],
+#         ['user_to_user', CREATOR_PK, MEMBER_2_PK, False, False, False],
 
-        ['user_to_fund', CREATOR_PK, None, True, False, False],
-        ['user_to_fund', MEMBER_1_PK, None, True, False, False],
-        ['user_to_fund', MEMBER_2_PK, None, True, False, False],
+#         ['user_to_fund', CREATOR_PK, None, True, False, False],
+#         ['user_to_fund', MEMBER_1_PK, None, True, False, False],
+#         ['user_to_fund', MEMBER_2_PK, None, True, False, False],
 
-        ['fund_to_user', None, CREATOR_PK, False, True, False],
-        ['fund_to_user', None, MEMBER_1_PK, False, True, False],
-        ['fund_to_user', None, MEMBER_2_PK, False, True, False],
+#         ['fund_to_user', None, CREATOR_PK, False, True, False],
+#         ['fund_to_user', None, MEMBER_1_PK, False, True, False],
+#         ['fund_to_user', None, MEMBER_2_PK, False, True, False],
 
-        ['user_expense', CREATOR_PK, None, False, False, True],
-        ['user_expense', MEMBER_1_PK, None, False, False, True],
-        ['user_expense', MEMBER_2_PK, None, False, False, True],
+#         ['user_expense', CREATOR_PK, None, False, False, True],
+#         ['user_expense', MEMBER_1_PK, None, False, False, True],
+#         ['user_expense', MEMBER_2_PK, None, False, False, True],
 
-        ['fund_expense', None, None, False, True, True],
-    ])
-    def test__add_transaction(
-        self, transaction_type, from_user, to_user,
-        expected_is_deposit, expected_is_withdrawal, expected_is_expense
-    ):
-        self.client.force_authenticate(user=self.creator)
-        url = f'{URL}{self.event.pk}/add-transaction/'
-        data = {
-            'transaction_type': transaction_type,
-            'from_user': from_user,
-            'to_user': to_user,
-        }
-        now = timezone.now()
-        res = self.client.post(url, data)
-        self.assertEqual(res.status_code, 200)
+#         ['fund_expense', None, None, False, True, True],
+#     ])
+#     def test__add_transaction(
+#         self, transaction_type, from_user, to_user,
+#         expected_is_deposit, expected_is_withdrawal, expected_is_expense
+#     ):
+#         self.client.force_authenticate(user=self.creator)
+#         url = f'{URL}{self.event.pk}/add-transaction/'
+#         data = {
+#             'transaction_type': transaction_type,
+#             'from_user': from_user,
+#             'to_user': to_user,
+#         }
+#         now = timezone.now()
+#         res = self.client.post(url, data)
+#         self.assertEqual(res.status_code, 200)
 
-        # Test response
-        actual = res.json()
-        pk = actual.get('pk')
-        expected = json.dumps({
-            'pk': pk,
-            'transaction_type': transaction_type,
-            'from_user': self.get_user_json(from_user),
-            'to_user': self.get_user_json(to_user),
-        })
-        self.assertJSONEqual(expected, actual)
+#         # Test response
+#         actual = res.json()
+#         pk = actual.get('pk')
+#         expected = json.dumps({
+#             'pk': pk,
+#             'transaction_type': transaction_type,
+#             'from_user': self.get_user_json(from_user),
+#             'to_user': self.get_user_json(to_user),
+#         })
+#         self.assertJSONEqual(expected, actual)
 
-        # Test DB
-        transaction = Transaction.objects.get(pk=pk)
-        self.assertEqual(getattr(transaction.from_user, 'pk', None), from_user)
-        self.assertEqual(getattr(transaction.to_user, 'pk', None), to_user)
-        self.assertEqual(transaction.is_deposit, expected_is_deposit)
-        self.assertEqual(transaction.is_withdrawal, expected_is_withdrawal)
-        self.assertEqual(transaction.is_expense, expected_is_expense)
-        self.assertAlmostEqual(transaction.create_time, now, delta=timedelta(seconds=5))
-        self.assertAlmostEqual(transaction.update_time, now, delta=timedelta(seconds=5))
+#         # Test DB
+#         transaction = Transaction.objects.get(pk=pk)
+#         self.assertEqual(getattr(transaction.from_user, 'pk', None), from_user)
+#         self.assertEqual(getattr(transaction.to_user, 'pk', None), to_user)
+#         self.assertEqual(transaction.is_deposit, expected_is_deposit)
+#         self.assertEqual(transaction.is_withdrawal, expected_is_withdrawal)
+#         self.assertEqual(transaction.is_expense, expected_is_expense)
+#         self.assertAlmostEqual(transaction.create_time, now, delta=timedelta(seconds=5))
+#         self.assertAlmostEqual(transaction.update_time, now, delta=timedelta(seconds=5))
 
-    def test__remove_transaction(self):
-        transaction = baker.make(Transaction, event=self.event)
+#     def test__remove_transaction(self):
+#         transaction = baker.make(Transaction, event=self.event)
 
-        self.client.force_authenticate(user=self.creator)
-        url = f'{URL}{self.event.pk}/remove-transaction/'
-        data = {'transaction_pk': transaction.pk}
-        res = self.client.post(url, data)
+#         self.client.force_authenticate(user=self.creator)
+#         url = f'{URL}{self.event.pk}/remove-transaction/'
+#         data = {'transaction_pk': transaction.pk}
+#         res = self.client.post(url, data)
 
-        self.assertEqual(res.status_code, 204)
-        self.assertFalse(Transaction.objects.filter(pk=transaction.pk).exists())
+#         self.assertEqual(res.status_code, 204)
+#         self.assertFalse(Transaction.objects.filter(pk=transaction.pk).exists())
 
 
-class EventGetTransactionsTestCase(_EventViewSetTestCase):
-    NOW = '2021-07-30T14:05:26Z'
+# class EventGetTransactionsTestCase(_EventViewSetTestCase):
+#     NOW = '2021-07-30T14:05:26Z'
 
-    def setUp(self):
-        self.creator = baker.make(User)
-        self.member = baker.make(User)
-        self.event = baker.make(Event, creator=self.creator)
-        self.event.members.add(self.creator, self.member)
-        self.transactions = []
+#     def setUp(self):
+#         self.creator = baker.make(User)
+#         self.member = baker.make(User)
+#         self.event = baker.make(Event, creator=self.creator)
+#         self.event.members.add(self.creator, self.member)
+#         self.transactions = []
 
-        create_time = parse_datetime(self.NOW)
-        for _ in range(10):
-            with freeze_time(create_time):
-                transaction = baker.make(Transaction, event=self.event)
-                self.transactions.append(transaction)
-            create_time -= timedelta(hours=1)
+#         create_time = parse_datetime(self.NOW)
+#         for _ in range(10):
+#             with freeze_time(create_time):
+#                 transaction = baker.make(Transaction, event=self.event)
+#                 self.transactions.append(transaction)
+#             create_time -= timedelta(hours=1)
 
-    def test__filter_transactions__response(self):
-        self.client.force_authenticate(user=self.creator)
-        url = f'{URL}{self.event.pk}/get-transactions/'
+#     def test__filter_transactions__response(self):
+#         self.client.force_authenticate(user=self.creator)
+#         url = f'{URL}{self.event.pk}/get-transactions/'
 
-        params = {
-            'start_time': '2021-07-30T14:05:26Z',
-            'end_time': '2021-07-30T14:05:26Z',
-        }
-        res = self.client.get(url, params)
-        self.assertEqual(res.status_code, 200)
+#         params = {
+#             'start_time': '2021-07-30T14:05:26Z',
+#             'end_time': '2021-07-30T14:05:26Z',
+#         }
+#         res = self.client.get(url, params)
+#         self.assertEqual(res.status_code, 200)
 
-        actual = res.json()
-        trans = self.transactions[0]
-        expected_res = [{
-            'pk': trans.pk,
-            'transaction_type': trans.get_transaction_type(),
-            'from_user': trans.from_user,
-            'to_user': trans.to_user,
-            'create_time': self.NOW,
-            'update_time': self.NOW,
-        }]
-        expected = json.dumps(self.get_pagination_json(expected_res))
+#         actual = res.json()
+#         trans = self.transactions[0]
+#         expected_res = [{
+#             'pk': trans.pk,
+#             'transaction_type': trans.get_transaction_type(),
+#             'from_user': trans.from_user,
+#             'to_user': trans.to_user,
+#             'create_time': self.NOW,
+#             'update_time': self.NOW,
+#         }]
+#         expected = json.dumps(self.get_pagination_json(expected_res))
 
-        self.assertJSONEqual(expected, actual)
+#         self.assertJSONEqual(expected, actual)
 
-    @parameterized.expand([
-        [None, None, 1, 10],
+#     @parameterized.expand([
+#         [None, None, 1, 10],
 
-        # With either start or end time
-        ['2021-07-30T10:05:26Z', None, 1, 5],
-        [None, '2021-07-30T07:05:26Z', 8, 10],
+#         # With either start or end time
+#         ['2021-07-30T10:05:26Z', None, 1, 5],
+#         [None, '2021-07-30T07:05:26Z', 8, 10],
 
-        # With both start and end time
-        ['2021-07-30T10:05:26Z', '2021-07-30T14:05:26Z', 1, 5],
-        ['2021-07-30T10:06:26Z', '2021-07-30T14:05:25Z', 2, 4],
+#         # With both start and end time
+#         ['2021-07-30T10:05:26Z', '2021-07-30T14:05:26Z', 1, 5],
+#         ['2021-07-30T10:06:26Z', '2021-07-30T14:05:25Z', 2, 4],
 
-        # With timezone
-        ['2021-07-30T17:05:26+0700', '2021-07-30T21:05:26+0700', 1, 5],
-        ['2021-07-30T22:06:26+1200', '2021-07-31T02:05:25+1200', 2, 4],
-    ])
-    def test__filter_transactions__start_end_time(
-        self, start_time, end_time,
-        expected_first_transaction, expected_last_transaction
-    ):
-        self.client.force_authenticate(user=self.creator)
-        url = f'{URL}{self.event.pk}/get-transactions/'
+#         # With timezone
+#         ['2021-07-30T17:05:26+0700', '2021-07-30T21:05:26+0700', 1, 5],
+#         ['2021-07-30T22:06:26+1200', '2021-07-31T02:05:25+1200', 2, 4],
+#     ])
+#     def test__filter_transactions__start_end_time(
+#         self, start_time, end_time,
+#         expected_first_transaction, expected_last_transaction
+#     ):
+#         self.client.force_authenticate(user=self.creator)
+#         url = f'{URL}{self.event.pk}/get-transactions/'
 
-        params = {}
-        if start_time:
-            params['start_time'] = start_time
-        if end_time:
-            params['end_time'] = end_time
+#         params = {}
+#         if start_time:
+#             params['start_time'] = start_time
+#         if end_time:
+#             params['end_time'] = end_time
 
-        res = self.client.get(url, params)
-        self.assertEqual(res.status_code, 200)
+#         res = self.client.get(url, params)
+#         self.assertEqual(res.status_code, 200)
 
-        results = res.json()['results']
-        pks = [result['pk'] for result in results]
+#         results = res.json()['results']
+#         pks = [result['pk'] for result in results]
 
-        if not expected_first_transaction and not expected_last_transaction:
-            self.assertEqual(len(pks), 0)
-        else:
-            self.assertGreater(len(pks), 0)
-            first_pk = pks[0]
-            last_pk = pks[-1]
+#         if not expected_first_transaction and not expected_last_transaction:
+#             self.assertEqual(len(pks), 0)
+#         else:
+#             self.assertGreater(len(pks), 0)
+#             first_pk = pks[0]
+#             last_pk = pks[-1]
 
-            trans_pks = [trans.pk for trans in self.transactions]
-            first_pk_index = trans_pks.index(first_pk)
-            last_pk_index = trans_pks.index(last_pk)
+#             trans_pks = [trans.pk for trans in self.transactions]
+#             first_pk_index = trans_pks.index(first_pk)
+#             last_pk_index = trans_pks.index(last_pk)
 
-            self.assertEqual(first_pk_index + 1, expected_first_transaction)
-            self.assertEqual(last_pk_index + 1, expected_last_transaction)
+#             self.assertEqual(first_pk_index + 1, expected_first_transaction)
+#             self.assertEqual(last_pk_index + 1, expected_last_transaction)

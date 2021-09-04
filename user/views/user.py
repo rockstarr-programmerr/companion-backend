@@ -73,6 +73,9 @@ class UserViewSet(mixins.RetrieveModelMixin,
         url_path='my-info',
     )
     def my_info(self, request):
+        """
+        Get/update information of current logged-in user
+        """
         if request.method == 'GET':
             serializer = self.get_serializer(instance=request.user)
             return Response(serializer.data)
