@@ -1,6 +1,6 @@
 from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
-from rest_framework.exceptions import PermissionDenied
+from rest_framework.exceptions import NotFound
 
 from split_the_bill.models import Transaction
 from user.serializers.user import UserSerializer
@@ -22,7 +22,7 @@ class TransactionRequestSerializer(serializers.HyperlinkedModelSerializer):
     def validate_event(self, event):
         logged_in_user = self.context['request'].user
         if event not in logged_in_user.events_participated.all():
-            raise PermissionDenied(_("You don't have permission for this event."))
+            raise NotFound()
         return event
 
     def validate(self, attrs):
