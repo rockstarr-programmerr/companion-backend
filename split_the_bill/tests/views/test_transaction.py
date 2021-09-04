@@ -562,3 +562,39 @@ class TransactionUpdateTestCase(_TransactionTestCase):
         res = req_method(url, data)
         self.assertEqual(res.status_code, 200)
         self.assertTrue(Transaction.objects.filter(amount=9834765).exists())
+
+
+class DeleteTransactionTestCase(_TransactionTestCase):
+    def test__delete(self):
+        transaction = random.choice(self.event2.transactions.all())
+        user = random.choice(self.event2.members.all())
+        url = self.get_detail_url(transaction.pk)
+
+        self.client.force_authenticate(user=user)
+        res = self.client.delete(url)
+        self.assertEqual(res.status_code, 204)
+        self.assertFalse(Transaction.objects.filter(pk=transaction.pk).exists())
+
+    def test__delete_permission(self):
+        transaction = random.choice(self.event1.transactions.all())
+        user = random.choice(self.event1.members.all())
+        url = self.get_detail_url(transaction.pk)
+
+        # Unauthenticated user cannot access
+        res = self.client.delete(url)
+        self.assertEqual(res.status_code, 401)
+
+        # Member of 1 event cannot delete transaction for another event
+        user = random.choice(self.event2.members.exclude(pk__in=[member.pk for member in self.share_members]))
+        self.client.force_authenticate(user=user)
+        res = self.client.delete(url)
+        self.assertEqual(res.status_code, 404)
+
+        self.assertTrue(Transaction.objects.filter(pk=transaction.pk).exists())
+
+        # Members can delete transaction for their event
+        user = random.choice(self.event1.members.all())
+        self.client.force_authenticate(user=user)
+        res = self.client.delete(url)
+        self.assertEqual(res.status_code, 204)
+        self.assertFalse(Transaction.objects.filter(pk=transaction.pk).exists())
