@@ -14,6 +14,9 @@ class Group(TimeStamp):
     class Meta:
         unique_together = ['name', 'owner']
 
+    def __str__(self):
+        return f'{self.name} | {self.owner}'
+
     def is_owner(self, user):
         return user == self.owner
 

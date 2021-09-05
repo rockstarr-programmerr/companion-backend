@@ -25,6 +25,12 @@ class User(AbstractUser):
         validators=[validate_image_file_extension]
     )
 
+    def __str__(self):
+        text = self.username
+        if self.email:
+            text += f' - {self.email}'
+        return text
+
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
 

@@ -26,6 +26,10 @@ class Transaction(TimeStamp):
     class Meta:
         ordering = ['-create_time']
 
+    def __str__(self):
+        return (f'From {self.from_user} | To {self.to_user} | '
+                f'Type: {self.transaction_type} | Amount: {self.amount}')
+
     @classmethod
     def get_by_event_pk(cls, event_pk):
         condition = {

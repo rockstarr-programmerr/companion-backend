@@ -12,7 +12,7 @@ class Event(TimeStamp):
     members = models.ManyToManyField(User, related_name='events_participated')
 
     def __str__(self):
-        return f'{self.name} - {self.creator.username}'
+        return f'{self.name} | {self.creator}'
 
     def is_creator(self, user):
         return user == self.creator
