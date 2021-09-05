@@ -1,7 +1,7 @@
 import json
 import random
 
-from django.contrib.auth import get_user_model
+from django.contrib.auth import get_user_model, authenticate
 from faker import Faker
 from model_bakery import baker
 from parameterized import parameterized
@@ -413,3 +413,67 @@ class UserSearchTestCase(_UserTestCase):
         res = self.client.get(self.url, data)
         self.assertEqual(res.status_code, 400)
         self.assertDictEqual(res.json(), {'username__icontains': ['Ensure this value has at least 3 characters (it has 2).']})
+
+
+class UserChangePasswordTestCase(_UserTestCase):
+    url = reverse('user-change-password')
+    username = 'BigSmoke'
+    old_pwd = 'alargesoda'
+    new_pwd = 'twonumbernines'
+
+    def setUp(self):
+        super().setUp(create_data=False)
+
+        # Register user
+        register_url = reverse('user-register')
+        data = {'username': self.username, 'password': self.old_pwd}
+        res = self.client.post(register_url, data)
+
+        # Test authenticate
+        self.user = authenticate(res.wsgi_request, username=self.username, password=self.old_pwd)
+        self.assertIsNotNone(self.user)
+
+        self.client.force_authenticate(user=self.user)
+
+    def test__user_change_password(self):
+        # Change password
+        data = {'current_password': self.old_pwd, 'new_password': self.new_pwd}
+        res = self.client.post(self.url, data)
+        self.assertEqual(res.status_code, 200)
+
+        # Test authenticate with new password
+        user = authenticate(res.wsgi_request, username=self.username, password=self.old_pwd)
+        self.assertIsNone(user)
+        user = authenticate(res.wsgi_request, username=self.username, password=self.new_pwd)
+        self.assertIsNotNone(user)
+
+    def test__wrong_current_password(self):
+        data = {'current_password': 'fakepassword', 'new_password': self.new_pwd}
+        res = self.client.post(self.url, data)
+        self.assertEqual(res.status_code, 403)
+        self.assertDictEqual(res.json(), {'detail': 'Wrong password.'})
+
+    @parameterized.expand([
+        [None, None, ['This field is required.'], ['This field is required.']],
+        [old_pwd, '1', [], ['This password is too short. It must contain at least 8 characters.', 'This password is entirely numeric.']],
+    ])
+    def test__new_password_validation(
+        self, current_password, new_password,
+        expected_current_password_errs, expected_new_password_errs
+    ):
+        data = {}
+        if current_password:
+            data['current_password'] = current_password
+        if new_password:
+            data['new_password'] = new_password
+
+        res = self.client.post(self.url, data)
+        self.assertEqual(res.status_code, 400)
+        result = res.json()
+
+        if expected_current_password_errs:
+            errs = result['current_password']
+            self.assertListEqual(errs, expected_current_password_errs)
+        if expected_new_password_errs:
+            errs = result['new_password']
+            self.assertListEqual(errs, expected_new_password_errs)

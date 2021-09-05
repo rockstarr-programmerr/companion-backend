@@ -38,3 +38,8 @@ class UserSearchSerializer(serializers.HyperlinkedModelSerializer):
                 'min_length': USERNAME_MIN_LENGTH,
             }
         }
+
+
+class ChangePasswordSerializer(serializers.Serializer):
+    current_password = serializers.CharField(write_only=True)
+    new_password = serializers.CharField(write_only=True, validators=[validate_password])

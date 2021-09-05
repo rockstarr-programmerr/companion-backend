@@ -1,6 +1,8 @@
-from django.contrib.auth import get_user_model
+from django.contrib.auth import get_user_model, login
+from django.utils.translation import gettext as _
 from rest_framework import mixins, status
 from rest_framework.decorators import action
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet
@@ -9,7 +11,8 @@ from companion.utils.api import extra_action_urls
 from user.filters import UserFilter, UserSearchFilter
 from user.pagination import UserSearchPagination
 from user.permissions import IsSelfOrReadOnly
-from user.serializers.user import (RegisterSerializer, UserSearchSerializer,
+from user.serializers.user import (ChangePasswordSerializer,
+                                   RegisterSerializer, UserSearchSerializer,
                                    UserSerializer)
 
 User = get_user_model()
@@ -88,3 +91,26 @@ class UserViewSet(mixins.RetrieveModelMixin,
             serializer.is_valid(raise_exception=True)
             self.perform_update(serializer)
             return Response(serializer.data)
+
+    @action(
+        detail=False, methods=['POST'],
+        url_path='change-password',
+        serializer_class=ChangePasswordSerializer,
+    )
+    def change_password(self, request):
+        """
+        Change logged-in user's password, return 403 if `current_password` is not correct.
+        """
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        current_password = serializer.validated_data['current_password']
+        new_password = serializer.validated_data['new_password']
+
+        user = self.request.user
+        if not user.check_password(current_password):
+            raise PermissionDenied(_('Wrong password.'))
+
+        user.set_password(new_password)
+        user.save()
+        login(request, user)
+        return Response()
