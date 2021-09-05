@@ -27,7 +27,19 @@ env = environ.Env(
     DATABASE_URL=(str, 'sqlite:///db.sqlite3'),
     CORS_ALLOWED_ORIGINS=(list, [
         'http://localhost:8080',
+        'http://127.0.0.1:8080',
     ]),
+    ALLOWED_DEEPLINKS=(list, [
+        'http://localhost:8000',
+        'http://127.0.0.1:8000',
+    ]),
+    EMAIL_HOST=(str, ''),
+    EMAIL_PORT=(str, ''),
+    EMAIL_USE_SSL=(bool, True),
+    EMAIL_USE_TLS=(bool, False),
+    EMAIL_HOST_USER=(str, ''),
+    EMAIL_HOST_PASSWORD=(str, ''),
+    DEFAULT_FROM_EMAIL=(str, ''),
 )
 # reading .env file
 env_file = str(BASE_DIR / '.env')
@@ -187,7 +199,7 @@ SIMPLE_JWT = {
     'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
     'ROTATE_REFRESH_TOKENS': True,
     'BLACKLIST_AFTER_ROTATION': True,
-    'UPDATE_LAST_LOGIN': False,
+    'UPDATE_LAST_LOGIN': True,  # Needed for invalidating used password reset token
 
     'ALGORITHM': 'HS256',
     'SIGNING_KEY': env('SECRET_KEY'),
@@ -219,6 +231,18 @@ MEDIA_ROOT = BASE_DIR / 'media'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 LOGIN_REDIRECT_URL = '/'
+
+PASSWORD_RESET_TIMEOUT = 30 * 60  # 30 minutes
+
+ALLOWED_DEEPLINKS = env('ALLOWED_DEEPLINKS')
+
+EMAIL_HOST = env('EMAIL_HOST')
+EMAIL_PORT = env('EMAIL_PORT')
+EMAIL_USE_SSL = env('EMAIL_USE_SSL')
+EMAIL_USE_TLS = env('EMAIL_USE_TLS')
+EMAIL_HOST_USER = env('EMAIL_HOST_USER')
+EMAIL_HOST_PASSWORD = env('EMAIL_HOST_PASSWORD')
+DEFAULT_FROM_EMAIL = env('DEFAULT_FROM_EMAIL')
 
 IS_TESTING = 'test' in sys.argv
 

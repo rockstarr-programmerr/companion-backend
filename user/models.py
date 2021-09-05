@@ -20,9 +20,10 @@ class User(AbstractUser):
         validators=[MinLengthValidator(USERNAME_MIN_LENGTH)],
     )
     avatar = models.ImageField(
+        _('avatar'),
         upload_to='users/avatar/%Y/%m',
         blank=True,
-        validators=[validate_image_file_extension]
+        validators=[validate_image_file_extension],
     )
 
     def __str__(self):
@@ -41,3 +42,7 @@ class User(AbstractUser):
             with Image.open(self.avatar.path) as img:
                 img.thumbnail((AVATAR_WIDTH, AVATAR_HEIGHT))
                 img.save(self.avatar.path)
+
+    @classmethod
+    def get_user_by_email(cls, email):
+        return cls.objects.filter(email=email).first()

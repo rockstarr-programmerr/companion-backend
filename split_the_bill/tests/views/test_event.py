@@ -10,7 +10,7 @@ from rest_framework.test import APITestCase
 
 from split_the_bill.models import Event
 from split_the_bill.utils.datetime import format_iso
-from split_the_bill.utils.url import update_url_params
+from companion.utils.url import update_url_params
 from split_the_bill.views import EventViewSet
 
 fake = Faker()

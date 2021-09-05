@@ -1,5 +1,7 @@
 from django.contrib.auth import get_user_model, login
+from django.utils.decorators import method_decorator
 from django.utils.translation import gettext as _
+from django.views.decorators.debug import sensitive_post_parameters
 from rest_framework import mixins, status
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied
@@ -12,13 +14,21 @@ from user.filters import UserFilter, UserSearchFilter
 from user.pagination import UserSearchPagination
 from user.permissions import IsSelfOrReadOnly
 from user.serializers.user import (ChangePasswordSerializer,
+                                   EmailResetPasswordLinkSerializer,
                                    RegisterSerializer, UserSearchSerializer,
                                    UserSerializer)
+from user.business import reset_password
 
 User = get_user_model()
 
 
 @extra_action_urls
+@method_decorator(
+    sensitive_post_parameters(
+        'password', 'new_password', 'current_password'
+    ),
+    name='dispatch'
+)
 class UserViewSet(mixins.RetrieveModelMixin,
                   mixins.UpdateModelMixin,
                   mixins.ListModelMixin,
@@ -45,6 +55,7 @@ class UserViewSet(mixins.RetrieveModelMixin,
     def register(self, request):
         """
         Register user.
+        `email` is not required, but must be unique if provided.
         """
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -113,4 +124,22 @@ class UserViewSet(mixins.RetrieveModelMixin,
         user.set_password(new_password)
         user.save()
         login(request, user)
+        return Response()
+
+    @action(
+        detail=False, methods=['POST'],
+        url_path='email-reset-password-link',
+        serializer_class=EmailResetPasswordLinkSerializer,
+        permission_classes=[AllowAny],
+    )
+    def email_reset_password_link(self, request):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        deeplink = serializer.validated_data['deeplink']
+        email = serializer.validated_data['email']
+
+        user = User.get_user_by_email(email)
+        if user:
+            reset_password.send_email(user, deeplink)
+
         return Response()

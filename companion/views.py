@@ -18,6 +18,7 @@ class RootAPIView(APIView):
             }
         else:
             data = {
+                'email_reset_password_link': reverse('user-email-reset-password-link', request=request),
                 'register': reverse('user-register', request=request),
             }
             if settings.DEBUG:
