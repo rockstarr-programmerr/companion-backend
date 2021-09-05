@@ -68,3 +68,13 @@ Run unittests:
 ```
 python manage.py test
 ```
+
+## Production
+
+### Browsable API
+In production, only staff users can access browsable API.
+
+To create staff user:
+```
+python manage.py createsuperuser
+```

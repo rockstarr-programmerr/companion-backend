@@ -10,9 +10,11 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/3.2/ref/settings/
 """
 
-import environ
+import sys
 from datetime import timedelta
 from pathlib import Path
+
+import environ
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -47,12 +49,12 @@ ALLOWED_HOSTS = env('ALLOWED_HOSTS')
 # Application definition
 
 INSTALLED_APPS = [
-    # 'django.contrib.admin',
+    'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
-    # 'django.contrib.messages',
-    # 'django.contrib.staticfiles',
+    'django.contrib.messages',
+    'django.contrib.staticfiles',
     'rest_framework',
     'django_filters',
     'corsheaders',
@@ -154,6 +156,7 @@ CSRF_COOKIE_NAME = 'csrftokencompanion'
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework_simplejwt.authentication.JWTAuthentication',
+        'rest_framework.authentication.SessionAuthentication',  # For authentication to browsable API
     ],
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',
@@ -213,15 +216,12 @@ SIMPLE_JWT = {
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
-if env('DEBUG'):
-    INSTALLED_APPS.extend([
-        'django.contrib.staticfiles',
-    ])
+STATIC_ROOT = BASE_DIR / 'staticfiles'
 
-    STATIC_ROOT = BASE_DIR / 'staticfiles'
+LOGIN_REDIRECT_URL = '/'
 
-    REST_FRAMEWORK['DEFAULT_AUTHENTICATION_CLASSES'].extend([
-        'rest_framework.authentication.SessionAuthentication',  # For authentication to browsable API
-    ])
+IS_TESTING = 'test' in sys.argv
 
-    LOGIN_REDIRECT_URL = '/'
+if IS_TESTING:
+    if 'DEFAULT_THROTTLE_RATES' in REST_FRAMEWORK:
+        del REST_FRAMEWORK['DEFAULT_THROTTLE_RATES']
