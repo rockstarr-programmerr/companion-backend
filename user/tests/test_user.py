@@ -52,6 +52,7 @@ class _UserTestCase(APITestCase):
             'username': user.username,
             'email': user.email,
             'avatar': user.avatar.path if user.avatar else None,
+            'avatar_thumbnail': user.avatar_thumbnail.path if user.avatar_thumbnail else None,
         }
 
     @staticmethod
@@ -253,8 +254,9 @@ class UserUpdateTestCase(_UserTestCase):
         res = self.client.patch(url, data)
 
         user.refresh_from_db()
-        self.assertIsNone(user.avatar)
-        self.assertIsNone(user.avatar_thumbnail)
+        with self.assertRaises(ValueError):
+            user.avatar.path
+            user.avatar_thumbnail.path
         self.assertIsNone(res.json()['avatar'])
         self.assertIsNone(res.json()['avatar_thumbnail'])
 
@@ -450,7 +452,10 @@ class UserSearchTestCase(_UserTestCase):
         expected_usernames.sort()
         actual = res.json()
         expected = json.dumps(self.get_pagination_json([
-            {'username': username}
+            {
+                'username': username,
+                'avatar_thumbnail': None,
+            }
             for username in expected_usernames
         ], extra_actions=False))
         self.assertJSONEqual(expected, actual)

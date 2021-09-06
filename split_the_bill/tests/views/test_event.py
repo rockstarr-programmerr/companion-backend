@@ -78,6 +78,7 @@ class _EventViewSetTestCase(APITestCase):
             'username': user.username,
             'email': user.email,
             'avatar': user.avatar.path if user.avatar else None,
+            'avatar_thumbnail': user.avatar_thumbnail.path if user.avatar_thumbnail else None,
         }
 
     @staticmethod
