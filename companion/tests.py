@@ -19,9 +19,9 @@ class CompanionTestCase(APITestCase):
         user = baker.make(User, is_staff=False)
         self.client.force_authenticate(user=user)
         res = self.client.get('/split-the-bill/events/?format=api')
-        self.assertEqual(res.content, b'')
+        self.assertEqual(res.content, b'<a href="http://testserver/api-auth/login/?format=api">Login</a>')
 
         user = baker.make(User, is_staff=True)
         self.client.force_authenticate(user=user)
         res = self.client.get('/split-the-bill/events/?format=api')
-        self.assertNotEqual(res.content, b'')
+        self.assertNotEqual(res.content, b'<a href="http://testserver/api-auth/login/?format=api">Login</a>')

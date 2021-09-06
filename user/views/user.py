@@ -77,7 +77,10 @@ class UserViewSet(mixins.RetrieveModelMixin,
     )
     def my_info(self, request):
         """
-        Get/update information of current logged-in user
+        Get/update information of current logged-in user.
+
+        To update avatar: send image with Content-Type = multipart/form-data
+        To remove avatar: send request with {"avatar": null}
         """
         if request.method == 'GET':
             serializer = self.get_serializer(instance=request.user)

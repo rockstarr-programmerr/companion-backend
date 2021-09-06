@@ -10,11 +10,18 @@ User = get_user_model()
 class UserSerializer(serializers.HyperlinkedModelSerializer):
     class Meta:
         model = User
-        fields = ['url', 'pk', 'username', 'email', 'avatar']
+        fields = ['url', 'pk', 'username', 'email', 'avatar', 'avatar_thumbnail']
         extra_kwargs = {
             'url': {'read_only': True},
             'pk': {'read_only': True},
+            'avatar': {'allow_null': True},
+            'avatar_thumbnail': {'read_only': True},
         }
+
+    def validate(self, attrs):
+        if 'avatar' in attrs:
+            attrs['avatar_thumbnail'] = attrs['avatar']
+        return attrs
 
 
 class RegisterSerializer(serializers.ModelSerializer):
@@ -32,9 +39,12 @@ class RegisterSerializer(serializers.ModelSerializer):
 class UserSearchSerializer(serializers.HyperlinkedModelSerializer):
     class Meta:
         model = User
-        fields = ['username']
+        fields = ['username', 'avatar_thumbnail']
         extra_kwargs = {
             'username': {
                 'min_length': USERNAME_MIN_LENGTH,
+            },
+            'avatar_thumbnail': {
+                'read_only': True,
             }
         }

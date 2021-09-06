@@ -1,7 +1,9 @@
 import json
 import random
+from pathlib import Path
 
 from django.contrib.auth import get_user_model
+from django.conf import settings
 from faker import Faker
 from model_bakery import baker
 from parameterized import parameterized
@@ -50,6 +52,7 @@ class _UserTestCase(APITestCase):
             'username': user.username,
             'email': user.email,
             'avatar': user.avatar.path if user.avatar else None,
+            'avatar_thumbnail': user.avatar_thumbnail.path if user.avatar_thumbnail else None,
         }
 
     @staticmethod
@@ -200,6 +203,62 @@ class UserUpdateTestCase(_UserTestCase):
             self.get_user_json(user, request=res.wsgi_request)
         )
         self.assertJSONEqual(expected, actual)
+
+    def test__update_avatar(self):
+        user = baker.make(User)
+        self.client.force_authenticate(user=user)
+        url = self.get_detail_url(user.pk)
+
+        avatar_path = Path(__file__).parent / 'assets' / 'avatar.jpg'
+        with open(avatar_path, 'rb') as avatar:
+            data = {'avatar': avatar}
+            res = self.client.patch(url, data, format='multipart')
+
+        results = res.json()
+
+        # Check if resizing works
+        user.refresh_from_db()
+        self.assertLessEqual(user.avatar.width, 256)
+        self.assertLessEqual(user.avatar.height, 256)
+        self.assertLessEqual(user.avatar_thumbnail.width, 64)
+        self.assertLessEqual(user.avatar_thumbnail.height, 64)
+
+        # Check if path returned to client is correct
+        avatar_path = Path(user.avatar.path).relative_to(settings.MEDIA_ROOT)
+        avatar_path = str(avatar_path).replace('\\', '/')
+        avatar_url = 'http://testserver' + settings.MEDIA_URL + avatar_path
+        self.assertEqual(avatar_url, results['avatar'])
+
+        avatar_thumbnail_path = Path(user.avatar_thumbnail.path).relative_to(settings.MEDIA_ROOT)
+        avatar_thumbnail_path = str(avatar_thumbnail_path).replace('\\', '/')
+        avatar_thumbnail_url = 'http://testserver' + settings.MEDIA_URL + avatar_thumbnail_path
+        self.assertEqual(avatar_thumbnail_url, results['avatar_thumbnail'])
+
+    def test__remove_avatar(self):
+        user = baker.make(User)
+        self.client.force_authenticate(user=user)
+        url = self.get_detail_url(user.pk)
+
+        avatar_path = Path(__file__).parent / 'assets' / 'avatar.jpg'
+        with open(avatar_path, 'rb') as avatar:
+            data = {'avatar': avatar}
+            res = self.client.patch(url, data, format='multipart')
+
+        user.refresh_from_db()
+        self.assertIsNotNone(user.avatar)
+        self.assertIsNotNone(user.avatar_thumbnail)
+        self.assertIsNotNone(res.json()['avatar'])
+        self.assertIsNotNone(res.json()['avatar_thumbnail'])
+
+        data = {'avatar': None}
+        res = self.client.patch(url, data)
+
+        user.refresh_from_db()
+        with self.assertRaises(ValueError):
+            user.avatar.path
+            user.avatar_thumbnail.path
+        self.assertIsNone(res.json()['avatar'])
+        self.assertIsNone(res.json()['avatar_thumbnail'])
 
     @parameterized.expand([
         ['put'],
@@ -393,7 +452,10 @@ class UserSearchTestCase(_UserTestCase):
         expected_usernames.sort()
         actual = res.json()
         expected = json.dumps(self.get_pagination_json([
-            {'username': username}
+            {
+                'username': username,
+                'avatar_thumbnail': None,
+            }
             for username in expected_usernames
         ], extra_actions=False))
         self.assertJSONEqual(expected, actual)
