@@ -6,8 +6,10 @@ from django.utils.translation import gettext_lazy as _
 from PIL import Image
 
 USERNAME_MIN_LENGTH = 3
-AVATAR_WIDTH = 64
-AVATAR_HEIGHT = 64
+AVATAR_WIDTH = 256
+AVATAR_HEIGHT = 256
+AVATAR_THUMBNAIL_WIDTH = 64
+AVATAR_THUMBNAIL_HEIGHT = 64
 
 class User(AbstractUser):
     username = models.CharField(
@@ -24,6 +26,11 @@ class User(AbstractUser):
         blank=True,
         validators=[validate_image_file_extension]
     )
+    avatar_thumbnail = models.ImageField(
+        upload_to='users/avatar_thumbnail/%Y/%m',
+        blank=True,
+        validators=[validate_image_file_extension]
+    )
 
     def __str__(self):
         text = self.username
@@ -33,11 +40,15 @@ class User(AbstractUser):
 
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
+        self._make_thumbnail(self.avatar, AVATAR_WIDTH, AVATAR_HEIGHT)
+        self._make_thumbnail(self.avatar_thumbnail, AVATAR_THUMBNAIL_WIDTH, AVATAR_THUMBNAIL_HEIGHT)
 
-        if self.avatar and (
-            self.avatar.width > AVATAR_WIDTH or
-            self.avatar.height > AVATAR_HEIGHT
+    @staticmethod
+    def _make_thumbnail(image, width, height):
+        if image and (
+            image.width > width or
+            image.height > height
         ):
-            with Image.open(self.avatar.path) as img:
-                img.thumbnail((AVATAR_WIDTH, AVATAR_HEIGHT))
-                img.save(self.avatar.path)
+            with Image.open(image.path) as f:
+                f.thumbnail((width, height))
+                f.save(image.path)
