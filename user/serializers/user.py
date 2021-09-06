@@ -39,9 +39,12 @@ class RegisterSerializer(serializers.ModelSerializer):
 class UserSearchSerializer(serializers.HyperlinkedModelSerializer):
     class Meta:
         model = User
-        fields = ['username']
+        fields = ['username', 'avatar_thumbnail']
         extra_kwargs = {
             'username': {
                 'min_length': USERNAME_MIN_LENGTH,
+            },
+            'avatar_thumbnail': {
+                'read_only': True,
             }
         }
