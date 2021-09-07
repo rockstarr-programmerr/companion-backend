@@ -15,3 +15,6 @@ class EventInvitation(TimeStamp):
     event = models.ForeignKey('Event', on_delete=models.CASCADE)
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     status = models.CharField(max_length=8, choices=Statuses.choices, default=Statuses.PENDING)
+
+    class Meta:
+        unique_together = ['event', 'user']
