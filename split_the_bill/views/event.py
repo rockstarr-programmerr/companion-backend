@@ -4,6 +4,7 @@ from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
 
 from companion.utils.api import extra_action_urls
+from split_the_bill.filters import EventFilter
 from split_the_bill.models import Event
 from split_the_bill.permissions import IsEventCreatorOrReadonly
 from split_the_bill.serializers.event import (AddMembersSerializer,
@@ -14,6 +15,7 @@ from split_the_bill.serializers.event import (AddMembersSerializer,
 @extra_action_urls
 class EventViewSet(ModelViewSet):
     serializer_class = EventSerializer
+    filterset_class = EventFilter
     permission_classes = [IsEventCreatorOrReadonly]
     ordering_fields = ['name', 'create_time', 'update_time']
     ordering = ['-create_time']

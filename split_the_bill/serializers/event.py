@@ -14,6 +14,7 @@ class EventSerializer(serializers.HyperlinkedModelSerializer):
     creator = UserSerializer(read_only=True)
     members = UserSerializer(many=True, read_only=True)
     transactions_url = serializers.SerializerMethodField(read_only=True)
+    invitations_url = serializers.SerializerMethodField(read_only=True)
     extra_action_urls = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
@@ -21,12 +22,17 @@ class EventSerializer(serializers.HyperlinkedModelSerializer):
         fields = [
             'url', 'pk', 'name',
             'creator', 'members', 'create_time',
-            'transactions_url', 'extra_action_urls',
+            'transactions_url', 'invitations_url', 'extra_action_urls',
         ]
 
-    def get_transactions_url(self, transaction):
+    def get_transactions_url(self, event):
         url = reverse('transaction-list', request=self.context['request'])
-        params = {'event': transaction.pk}
+        params = {'event': event.pk}
+        return update_url_params(url, params)
+
+    def get_invitations_url(self, event):
+        url = reverse('event-invitation-list', request=self.context['request'])
+        params = {'event': event.pk}
         return update_url_params(url, params)
 
     def get_extra_action_urls(self, transaction):
