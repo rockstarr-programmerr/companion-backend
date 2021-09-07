@@ -7,8 +7,9 @@ from companion.utils.api import extra_action_urls
 from split_the_bill.filters import EventFilter
 from split_the_bill.models import Event
 from split_the_bill.permissions import IsEventCreatorOrReadonly
-from split_the_bill.serializers.event import (AddMembersSerializer,
+from split_the_bill.serializers.event import (CancelInviteMembersSerializer,
                                               EventSerializer,
+                                              InviteMembersSerializer,
                                               RemoveMembersSerializer)
 
 
@@ -31,18 +32,34 @@ class EventViewSet(ModelViewSet):
         )
 
     @action(
-        methods=['POST'], detail=True, url_path='add-members',
-        serializer_class=AddMembersSerializer
+        methods=['POST'], detail=True, url_path='invite-members',
+        serializer_class=InviteMembersSerializer
     )
-    def add_members(self, request, pk):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-
+    def invite_members(self, request, pk):
         event = get_object_or_404(Event, pk=pk)
         self.check_object_permissions(request, event)
 
+        serializer = self.get_serializer(data=request.data, event=event)
+        serializer.is_valid(raise_exception=True)
+
         member_usernames = serializer.validated_data['member_usernames']
-        event.add_members_by_usernames(member_usernames)
+        event.invite_members_by_usernames(member_usernames)
+
+        return Response()
+
+    @action(
+        methods=['POST'], detail=True, url_path='cancel-invite-members',
+        serializer_class=CancelInviteMembersSerializer
+    )
+    def cancel_invite_members(self, request, pk):
+        event = get_object_or_404(Event, pk=pk)
+        self.check_object_permissions(request, event)
+
+        serializer = self.get_serializer(data=request.data, event=event)
+        serializer.is_valid(raise_exception=True)
+
+        member_usernames = serializer.validated_data['member_usernames']
+        event.cancel_invite_members_by_usernames(member_usernames)
 
         return Response()
 
@@ -51,13 +68,13 @@ class EventViewSet(ModelViewSet):
         serializer_class=RemoveMembersSerializer
     )
     def remove_members(self, request, pk):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-
         event = get_object_or_404(Event, pk=pk)
         self.check_object_permissions(request, event)
 
+        serializer = self.get_serializer(data=request.data, event=event)
+        serializer.is_valid(raise_exception=True)
+
         member_pks = serializer.validated_data['member_pks']
-        event.members.remove(*member_pks)
+        event.invited_users.remove(*member_pks)
 
         return Response()

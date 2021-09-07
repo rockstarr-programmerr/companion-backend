@@ -27,7 +27,7 @@ class EventInvitationRequestSerializer(serializers.HyperlinkedModelSerializer):
             )
         if EventInvitation.objects.filter(user__username=username).exists():
             raise serializers.ValidationError(
-                _('This user is already invited.')
+                _('This user is already invited or is already a member.')
             )
         return username
 

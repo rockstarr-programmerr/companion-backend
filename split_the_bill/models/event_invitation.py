@@ -18,3 +18,12 @@ class EventInvitation(TimeStamp):
 
     class Meta:
         unique_together = ['event', 'user']
+
+    def is_pending(self):
+        return self.status == self.Statuses.PENDING
+
+    def is_accepted(self):
+        return self.status == self.Statuses.ACCEPTED
+
+    def is_declined(self):
+        return self.status == self.Statuses.DECLINED
