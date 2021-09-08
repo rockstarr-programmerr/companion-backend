@@ -3,19 +3,22 @@ from rest_framework import mixins, status
 from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
+from rest_framework.reverse import reverse_lazy
 from rest_framework.viewsets import GenericViewSet
 
 from companion.utils.api import extra_action_urls
 from user.filters import UserFilter, UserSearchFilter
 from user.pagination import UserSearchPagination
 from user.permissions import IsSelfOrReadOnly
-from user.serializers.user import (MyInfoSerializer, RegisterSerializer,
-                                   UserSearchSerializer, UserSerializer)
+from user.serializers.user import (RegisterSerializer, UserSearchSerializer,
+                                   UserSerializer)
 
 User = get_user_model()
 
 
-@extra_action_urls
+@extra_action_urls({
+    'my_info': reverse_lazy('user-my-info'),  # Backward-compat
+})
 class UserViewSet(mixins.RetrieveModelMixin,
                   mixins.UpdateModelMixin,
                   mixins.ListModelMixin,
