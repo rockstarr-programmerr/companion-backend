@@ -1,11 +1,9 @@
 from rest_framework.decorators import action
-from rest_framework.generics import get_object_or_404
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
 
 from companion.utils.api import extra_action_urls
 from split_the_bill.filters import EventFilter
-from split_the_bill.models import Event
 from split_the_bill.permissions import IsEventCreatorOrReadonly
 from split_the_bill.serializers.event import (CancelInviteMembersSerializer,
                                               EventSerializer,
@@ -36,8 +34,7 @@ class EventViewSet(ModelViewSet):
         serializer_class=InviteMembersSerializer
     )
     def invite_members(self, request, pk):
-        event = get_object_or_404(Event, pk=pk)
-        self.check_object_permissions(request, event)
+        event = self.get_object()
 
         serializer = self.get_serializer(data=request.data, event=event)
         serializer.is_valid(raise_exception=True)
@@ -52,8 +49,7 @@ class EventViewSet(ModelViewSet):
         serializer_class=CancelInviteMembersSerializer
     )
     def cancel_invite_members(self, request, pk):
-        event = get_object_or_404(Event, pk=pk)
-        self.check_object_permissions(request, event)
+        event = self.get_object()
 
         serializer = self.get_serializer(data=request.data, event=event)
         serializer.is_valid(raise_exception=True)
@@ -68,8 +64,7 @@ class EventViewSet(ModelViewSet):
         serializer_class=RemoveMembersSerializer
     )
     def remove_members(self, request, pk):
-        event = get_object_or_404(Event, pk=pk)
-        self.check_object_permissions(request, event)
+        event = self.get_object()
 
         serializer = self.get_serializer(data=request.data, event=event)
         serializer.is_valid(raise_exception=True)

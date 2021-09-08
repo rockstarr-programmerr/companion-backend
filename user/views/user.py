@@ -9,8 +9,8 @@ from companion.utils.api import extra_action_urls
 from user.filters import UserFilter, UserSearchFilter
 from user.pagination import UserSearchPagination
 from user.permissions import IsSelfOrReadOnly
-from user.serializers.user import (RegisterSerializer, UserSearchSerializer,
-                                   UserSerializer)
+from user.serializers.user import (MyInfoSerializer, RegisterSerializer,
+                                   UserSearchSerializer, UserSerializer)
 
 User = get_user_model()
 
@@ -70,24 +70,3 @@ class UserViewSet(mixins.RetrieveModelMixin,
         page = self.paginate_queryset(queryset)
         serializer = self.get_serializer(instance=page, many=True)
         return self.get_paginated_response(serializer.data)
-
-    @action(
-        detail=False, methods=['GET', 'PUT', 'PATCH'],
-        url_path='my-info',
-    )
-    def my_info(self, request):
-        """
-        Get/update information of current logged-in user.
-
-        To update avatar: send image with Content-Type = multipart/form-data
-        To remove avatar: send request with {"avatar": null}
-        """
-        if request.method == 'GET':
-            serializer = self.get_serializer(instance=request.user)
-            return Response(serializer.data)
-        else:
-            partial = request.method == 'PATCH'
-            serializer = self.get_serializer(instance=request.user, data=request.data, partial=partial)
-            serializer.is_valid(raise_exception=True)
-            self.perform_update(serializer)
-            return Response(serializer.data)

@@ -13,6 +13,8 @@ class RootAPIView(APIView):
     def get(self, request):
         if request.user.is_authenticated:
             data = {
+                'my_info': reverse('user-my-info', request=request),
+                'my_event_invitations': reverse('user-my-event-invitation-list', request=request),
                 'user': request.build_absolute_uri(root_endpoints.USER),
                 'split_the_bill': request.build_absolute_uri(root_endpoints.SPLIT_THE_BILL),
             }

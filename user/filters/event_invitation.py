@@ -3,14 +3,14 @@ from django_filters import rest_framework as filters
 from split_the_bill.models import EventInvitation
 
 
-class EventInvitationFilter(filters.FilterSet):
+class UserEventInvitationFilter(filters.FilterSet):
     class Meta:
         model = EventInvitation
         fields = {
             'event': ['exact'],
             'event__name': ['icontains'],
-            'user': ['exact'],
-            'user__username': ['icontains'],
+            'event__creator__username': ['icontains'],
+            'event__creator__email': ['icontains'],
             'status': ['in'],
             'create_time': ['gte', 'lte'],
             'update_time': ['gte', 'lte'],
@@ -19,7 +19,8 @@ class EventInvitationFilter(filters.FilterSet):
     @property
     def qs(self):
         parent = super().qs
-        events = self.request.user.events_participated.all()
-        qs = parent.filter(event__in=events)\
+        user = self.request.user
+        events = user.events_invited_to.all()
+        qs = parent.filter(user=user, event__in=events)\
                    .select_related('user', 'event')
         return qs
