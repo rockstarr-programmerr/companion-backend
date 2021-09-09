@@ -10,7 +10,7 @@ from rest_framework.reverse import reverse
 from rest_framework.test import APITestCase
 
 from split_the_bill.models import Event, EventInvitation
-from split_the_bill.utils.datetime import format_iso
+from companion.utils.datetime import format_iso
 from split_the_bill.utils.url import update_url_params
 from split_the_bill.views import EventViewSet
 
@@ -584,7 +584,7 @@ class EventInvitationTestCase(_EventViewSetTestCase):
         self.assertEqual(res.status_code, 401)
 
         # Member cannot invite/cancel-invite
-        member = random.choice(event.members.all())
+        member = random.choice(event.members.exclude(pk=event.creator.pk))
         self.client.force_authenticate(user=member)
         res = self.client.post(url, data)
         self.assertEqual(res.status_code, 403)
