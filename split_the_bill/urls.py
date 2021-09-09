@@ -16,5 +16,6 @@ router = DefaultRouter()
 router.register('events', views.EventViewSet, basename='event')
 router.register('groups', views.GroupViewSet, basename='group')
 router.register('transactions', views.TransactionViewSet, basename='transaction')
+router.register('event-invitations', views.EventInvitationViewSet, basename='event-invitation')
 
 urlpatterns.extend(router.urls)

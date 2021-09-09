@@ -1,16 +1,19 @@
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
+from rest_framework.reverse import reverse
 
 from user.models import USERNAME_MIN_LENGTH
 
 User = get_user_model()
 
 
+USER_SERIALIZER_FIELDS = ['url', 'pk', 'username', 'email', 'avatar', 'avatar_thumbnail']
+
 class UserSerializer(serializers.HyperlinkedModelSerializer):
     class Meta:
         model = User
-        fields = ['url', 'pk', 'username', 'email', 'avatar', 'avatar_thumbnail']
+        fields = USER_SERIALIZER_FIELDS
         extra_kwargs = {
             'url': {'read_only': True},
             'pk': {'read_only': True},
@@ -48,3 +51,13 @@ class UserSearchSerializer(serializers.HyperlinkedModelSerializer):
                 'read_only': True,
             }
         }
+
+class MyInfoSerializer(UserSerializer):
+    event_invitations_url = serializers.SerializerMethodField()
+
+    class Meta(UserSerializer.Meta):
+        fields = USER_SERIALIZER_FIELDS + ['event_invitations_url']
+
+    def get_event_invitations_url(self, user):
+        request = self.context['request']
+        return reverse('user-my-event-invitation-list', request=request)

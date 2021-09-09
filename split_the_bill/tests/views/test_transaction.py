@@ -12,7 +12,7 @@ from rest_framework.reverse import reverse
 from rest_framework.test import APITestCase
 
 from split_the_bill.models import Event, Transaction
-from split_the_bill.utils.datetime import format_iso
+from companion.utils.datetime import format_iso
 from split_the_bill.views import TransactionViewSet
 
 fake = Faker()

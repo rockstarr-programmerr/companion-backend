@@ -2,15 +2,17 @@ import json
 import random
 from pathlib import Path
 
-from django.contrib.auth import get_user_model
 from django.conf import settings
+from django.contrib.auth import get_user_model
 from faker import Faker
 from model_bakery import baker
 from parameterized import parameterized
 from rest_framework.reverse import reverse
 from rest_framework.test import APITestCase
 
-from split_the_bill.models import Event
+from split_the_bill.models import Event, EventInvitation
+from split_the_bill.utils.datetime import format_iso
+from user.views import UserEventInvitationViewSet
 
 User = get_user_model()
 fake = Faker()
@@ -361,6 +363,13 @@ class UserMyInfoTestCase(_UserTestCase):
     url = reverse('user-list')
     my_info_url = reverse('user-my-info')
 
+    def get_user_json(self, pk, request=None):
+        user_json = super().get_user_json(pk, request=request)
+        user_json.update({
+            'event_invitations_url': reverse('user-my-event-invitation-list', request=request)
+        })
+        return user_json
+
     def setUp(self):
         super().setUp(create_data=False)
         self.user = baker.make(User)
@@ -475,3 +484,138 @@ class UserSearchTestCase(_UserTestCase):
         res = self.client.get(self.url, data)
         self.assertEqual(res.status_code, 400)
         self.assertDictEqual(res.json(), {'username__icontains': ['Ensure this value has at least 3 characters (it has 2).']})
+
+
+class UserMyEventInvitationTestCase(_UserTestCase):
+    def setUp(self):
+        super().setUp()
+        self.user = baker.make(User)
+        self.event1.invited_users.add(self.user)
+        self.event2.invited_users.add(self.user)
+        self.client.force_authenticate(user=self.user)
+
+    def get_invitation_json(self, invitation, request=None):
+        return {
+            'url': reverse('user-my-event-invitation-detail', kwargs={'pk': invitation.pk}, request=request),
+            'pk': invitation.pk,
+            'event': {
+                'name': invitation.event.name,
+                'creator': {
+                    'username': invitation.event.creator.username,
+                    'email': invitation.event.creator.email,
+                    'avatar': invitation.event.creator.avatar.url if invitation.event.creator.avatar else None,
+                    'avatar_thumbnail': invitation.event.creator.avatar_thumbnail.url if invitation.event.creator.avatar_thumbnail else None,
+                }
+            },
+            'status': invitation.status,
+            'create_time': format_iso(invitation.create_time),
+            'update_time': format_iso(invitation.update_time),
+            'accept_invitation_url': reverse('user-my-event-invitation-accept', kwargs={'pk': invitation.pk}, request=request),
+            'decline_invitation_url': reverse('user-my-event-invitation-decline', kwargs={'pk': invitation.pk}, request=request)
+        }
+
+    def test__list_my_event_invitations(self):
+        url = reverse('user-my-event-invitation-list')
+        res = self.client.get(url)
+        self.assertEqual(res.status_code, 200)
+
+        invitations = EventInvitation.objects.filter(user=self.user).order_by('-create_time')
+        results = [
+            self.get_invitation_json(invitation, request=res.wsgi_request)
+            for invitation in invitations
+        ]
+        expected = json.dumps(
+            self.get_pagination_json(results, extra_actions=False),
+        )
+        actual = res.json()
+
+        self.assertJSONEqual(expected, actual)
+
+    def test__retrieve_my_event_invitation(self):
+        invitation = EventInvitation.objects.filter(user=self.user).first()
+        url = reverse('user-my-event-invitation-detail', kwargs={'pk': invitation.pk})
+        res = self.client.get(url)
+        self.assertEqual(res.status_code, 200)
+
+        actual = res.json()
+        expected = json.dumps(
+            self.get_invitation_json(invitation, request=res.wsgi_request)
+        )
+
+        self.assertJSONEqual(expected, actual)
+
+    def test__accept_invitation(self):
+        invitation = EventInvitation.objects.filter(user=self.user, event=self.event1).first()
+        self.assertEqual(invitation.status, 'pending')
+        self.assertNotIn(self.user, self.event1.members.all())
+
+        url = reverse('user-my-event-invitation-accept', kwargs={'pk': invitation.pk})
+        res = self.client.post(url)
+        self.assertEqual(res.status_code, 200)
+
+        invitation.refresh_from_db()
+        self.assertEqual(invitation.status, 'accepted')
+        self.assertIn(self.user, self.event1.members.all())
+
+    def test__decline_invitation(self):
+        invitation = EventInvitation.objects.filter(user=self.user, event=self.event2).first()
+        self.assertEqual(invitation.status, 'pending')
+        self.assertNotIn(self.user, self.event2.members.all())
+
+        url = reverse('user-my-event-invitation-decline', kwargs={'pk': invitation.pk})
+        res = self.client.post(url)
+        self.assertEqual(res.status_code, 200)
+
+        invitation.refresh_from_db()
+        self.assertEqual(invitation.status, 'declined')
+        self.assertNotIn(self.user, self.event2.members.all())
+
+    def test__filter_and_ordering(self):
+        self.assertListEqual(UserEventInvitationViewSet.ordering_fields, ['create_time', 'update_time', 'event__name', 'status'])
+        self.assertListEqual(UserEventInvitationViewSet.ordering, ['-create_time'])
+
+    def test__get_list_permission(self):
+        url = reverse('user-my-event-invitation-list')
+
+        # Unauthenticated user cannot access
+        self.client.force_authenticate(user=None)
+        res = self.client.get(url)
+        self.assertEqual(res.status_code, 401)
+
+        # Cannot see other's invitations
+        other_user = baker.make(User)
+        self.event1.invited_users.add(other_user)
+        invitation_pks = EventInvitation.objects.filter(user=other_user).values_list('pk', flat=True)
+
+        self.client.force_authenticate(user=self.user)
+        res = self.client.get(url)
+        pks = [data['pk'] for data in res.json()['results']]
+
+        for pk in invitation_pks:
+            self.assertNotIn(pk, pks)
+
+    @parameterized.expand([
+        ['detail', 'get'],
+        ['accept', 'post'],
+        ['decline', 'post'],
+    ])
+    def test__get_detail__and__accept_decline__permission(self, action, method):
+        invitation = EventInvitation.objects.filter(user=self.user).first()
+        url = reverse(f'user-my-event-invitation-{action}', kwargs={'pk': invitation.pk})
+        req_method = getattr(self.client, method)
+
+        # Unauthenticated user cannot access
+        self.client.force_authenticate(user=None)
+        res = req_method(url)
+        self.assertEqual(res.status_code, 401)
+
+        # Other user cannot see
+        other_user = baker.make(User)
+        self.client.force_authenticate(user=other_user)
+        res = req_method(url)
+        self.assertEqual(res.status_code, 404)
+
+        # Correct user can see
+        self.client.force_authenticate(user=self.user)
+        res = req_method(url)
+        self.assertEqual(res.status_code, 200)

@@ -2,24 +2,28 @@ from django.utils.translation import gettext_lazy as _
 from rest_framework.permissions import SAFE_METHODS, IsAuthenticated
 
 
-class _IsCreatorOrReadonly(IsAuthenticated):
-    creator_field_name = ''
+class IsGroupOwnerOrReadonly(IsAuthenticated):
+    message = _('Only group owner has permission for this.')
 
     def has_object_permission(self, request, view, obj):
+        if not hasattr(obj, 'owner'):
+            obj = obj.group
         return (
             request.method in SAFE_METHODS or
-            request.user == getattr(obj, self.creator_field_name)
+            request.user == obj.owner
         )
 
 
-class IsGroupOwnerOrReadonly(_IsCreatorOrReadonly):
-    creator_field_name = 'owner'
-    message = _('Only group owner has permission for this.')
-
-
-class IsEventCreatorOrReadonly(_IsCreatorOrReadonly):
-    creator_field_name = 'creator'
+class IsEventCreatorOrReadonly(IsAuthenticated):
     message = _('Only event creator has permission for this.')
+
+    def has_object_permission(self, request, view, obj):
+        if not hasattr(obj, 'creator'):
+            obj = obj.event
+        return (
+            request.method in SAFE_METHODS or
+            request.user == obj.creator
+        )
 
 
 class IsEventMembers(IsAuthenticated):
