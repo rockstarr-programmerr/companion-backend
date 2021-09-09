@@ -70,6 +70,6 @@ class EventViewSet(ModelViewSet):
         serializer.is_valid(raise_exception=True)
 
         member_pks = serializer.validated_data['member_pks']
-        event.invited_users.remove(*member_pks)
+        event.members.remove(*member_pks)
 
         return Response()

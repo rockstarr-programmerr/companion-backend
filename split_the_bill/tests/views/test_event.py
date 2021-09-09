@@ -1,4 +1,5 @@
 import json
+import random
 
 from django.contrib.auth import get_user_model
 from faker import Faker
@@ -8,7 +9,7 @@ from parameterized import parameterized
 from rest_framework.reverse import reverse
 from rest_framework.test import APITestCase
 
-from split_the_bill.models import Event
+from split_the_bill.models import Event, EventInvitation
 from split_the_bill.utils.datetime import format_iso
 from split_the_bill.utils.url import update_url_params
 from split_the_bill.views import EventViewSet
@@ -44,8 +45,13 @@ class _EventViewSetTestCase(APITestCase):
 
     def get_event_json(self, event, request):
         members = event.members.all()
+
         transactions_url = reverse('transaction-list', request=request)
         transactions_url = update_url_params(transactions_url, {'event': event.pk})
+
+        invitations_url = reverse('event-invitation-list', request=request)
+        invitations_url = update_url_params(invitations_url, {'event': event.pk})
+
         return {
             'url': reverse('event-detail', kwargs={'pk': event.pk}, request=request),
             'pk': event.pk,
@@ -57,8 +63,10 @@ class _EventViewSetTestCase(APITestCase):
             ],
             'create_time': format_iso(event.create_time),
             'transactions_url': transactions_url,
+            'invitations_url': invitations_url,
             'extra_action_urls': {
-                'add_members': reverse('event-add-members', kwargs={'pk': event.pk}, request=request),
+                'invite_members': reverse('event-invite-members', kwargs={'pk': event.pk}, request=request),
+                'cancel_invite_members': reverse('event-cancel-invite-members', kwargs={'pk': event.pk}, request=request),
                 'remove_members': reverse('event-remove-members', kwargs={'pk': event.pk}, request=request),
             },
         }
@@ -93,11 +101,14 @@ class _EventViewSetTestCase(APITestCase):
             'results': results,
         }
 
-    def get_add_members_url(self, pk):
-        return f'{URL}{pk}/add-members/'
+    def get_invite_members_url(self, pk):
+        return reverse('event-invite-members', kwargs={'pk': pk})
+
+    def get_cancel_invite_members_url(self, pk):
+        return reverse('event-cancel-invite-members', kwargs={'pk': pk})
 
     def get_remove_members_url(self, pk):
-        return f'{URL}{pk}/remove-members/'
+        return reverse('event-remove-members', kwargs={'pk': pk})
 
 
 class EventReadTestCase(_EventViewSetTestCase):
@@ -377,27 +388,7 @@ class EventDeleteTestCase(_EventViewSetTestCase):
         self.assertFalse(Event.objects.filter(pk=event3.pk).exists())
 
 
-class EventAddRemoveMembersTestCase(_EventViewSetTestCase):
-    def test__add_members(self):
-        self.client.force_authenticate(user=self.creator)
-
-        new_members = baker.make(User, _quantity=3)
-        existing_members = self.event1.members.all()
-        for member in new_members:
-            self.assertNotIn(member, existing_members)
-
-        url = self.get_add_members_url(self.event1.pk)
-        data = {
-            'member_usernames': [member.username for member in new_members]
-        }
-        res = self.client.post(url, data)
-        self.assertEqual(res.status_code, 200)
-
-        self.event1.refresh_from_db()
-        members = self.event1.members.all()
-        for member in new_members:
-            self.assertIn(member, members)
-
+class EventRemoveMembersTestCase(_EventViewSetTestCase):
     def test__remove_members(self):
         self.client.force_authenticate(user=self.creator)
 
@@ -420,69 +411,38 @@ class EventAddRemoveMembersTestCase(_EventViewSetTestCase):
         for member in new_members:
             self.assertNotIn(member, members)
 
-    @parameterized.expand([
-        ['add', 'member_usernames'],
-        ['remove', 'member_pks'],
-    ])
-    def test__add_or_remove_members_validations(self, action, param_key):
+    def test__remove_members_validations(self):
         self.client.force_authenticate(user=self.creator)
-        url = getattr(self, f'get_{action}_members_url')(self.event1.pk)
+        url = self.get_remove_members_url(self.event1.pk)
 
-        # param_key is empty
-        data = {param_key: []}
+        # 'member_pks' is empty
+        data = {'member_pks': []}
         res = self.client.post(url, data)
         self.assertEqual(res.status_code, 400)
-        self.assertDictEqual(res.json(), {param_key: ['This list may not be empty.']})
+        self.assertDictEqual(res.json(), {'member_pks': ['This list may not be empty.']})
 
-        # More than 100 param_key
-        data = {param_key: list(range(1, 102))}
+        # More than 100 'member_pks'
+        data = {'member_pks': list(range(1, 102))}
         res = self.client.post(url, data)
         self.assertEqual(res.status_code, 400)
-        self.assertDictEqual(res.json(), {param_key: ['Ensure this field has no more than 100 elements.']})
+        self.assertDictEqual(res.json(), {'member_pks': ['Ensure this field has no more than 100 elements.']})
 
-        if action == 'remove':
-            # member_pk < 1
-            data = {param_key: [1, 2, 3, -1]}
-            res = self.client.post(url, data)
-            self.assertEqual(res.status_code, 400)
-            self.assertDictEqual(res.json(), {param_key: {'3': ['Ensure this value is greater than or equal to 1.']}})
+        # member_pk < 1
+        data = {'member_pks': [1, 2, 3, -1]}
+        res = self.client.post(url, data)
+        self.assertEqual(res.status_code, 400)
+        self.assertDictEqual(res.json(), {'member_pks': {'3': ['Ensure this value is greater than or equal to 1.']}})
 
-    def test__cannot_remove_yourself_from_event(self):
+    def test__cannot_remove_creator_of_event(self):
         self.client.force_authenticate(user=self.creator)
         url = self.get_remove_members_url(self.event1.pk)
 
         data = {'member_pks': [self.creator.pk]}
         res = self.client.post(url, data)
         self.assertEqual(res.status_code, 400)
-        self.assertDictEqual(res.json(), {'member_pks': ['Cannot remove yourself from event.']})
+        self.assertDictEqual(res.json(), {'member_pks': ['Cannot remove creator of event.']})
 
         self.assertIn(self.creator, self.event1.members.all())
-
-    def test__add_members__permission(self):
-        """
-        Only creator can add members
-        """
-        new_user = baker.make(User)
-        url = self.get_add_members_url(self.event1.pk)
-        data = {'member_usernames': [new_user.username]}
-
-        # Unauthenticated user cannot access
-        res = self.client.post(url, data)
-        self.assertEqual(res.status_code, 401)
-        self.assertNotIn(new_user, self.event1.members.all())
-
-        # Member cannot add member
-        member = self.event1.members.exclude(pk=self.creator.pk).first()
-        self.client.force_authenticate(user=member)
-        res = self.client.post(url, data)
-        self.assertEqual(res.status_code, 403)
-        self.assertNotIn(new_user, self.event1.members.all())
-
-        # Creator can add member
-        self.client.force_authenticate(user=self.creator)
-        res = self.client.post(url, data)
-        self.assertEqual(res.status_code, 200)
-        self.assertIn(new_user, self.event1.members.all())
 
     def test__remove_members__permission(self):
         url = self.get_remove_members_url(self.event1.pk)
@@ -506,3 +466,156 @@ class EventAddRemoveMembersTestCase(_EventViewSetTestCase):
         res = self.client.post(url, data)
         self.assertEqual(res.status_code, 200)
         self.assertNotIn(member, self.event1.members.all())
+
+
+class EventInvitationTestCase(_EventViewSetTestCase):
+    def test__invite_members(self):
+        users = baker.make(User, _quantity=3)
+        usernames = [user.username for user in users]
+        event = self.event1
+        invited_users = event.invited_users.all()
+        for user in users:
+            self.assertNotIn(user, invited_users)
+
+        self.client.force_authenticate(user=event.creator)
+        url = self.get_invite_members_url(event.pk)
+        data = {'member_usernames': usernames}
+        res = self.client.post(url, data)
+        self.assertEqual(res.status_code, 200)
+
+        invited_users = event.invited_users.all()
+        for user in users:
+            self.assertIn(user, invited_users)
+
+    def test__cancel_invite_members(self):
+        users = baker.make(User, _quantity=3)
+        usernames = [user.username for user in users]
+        event = self.event1
+        event.invited_users.add(*users)
+
+        invited_users = event.invited_users.all()
+        for user in users:
+            self.assertIn(user, invited_users)
+
+        self.client.force_authenticate(user=event.creator)
+        url = self.get_cancel_invite_members_url(event.pk)
+        data = {'member_usernames': usernames}
+        res = self.client.post(url, data)
+        self.assertEqual(res.status_code, 200)
+
+        invited_users = event.invited_users.all()
+        for user in users:
+            self.assertNotIn(user, invited_users)
+
+    def test__invite_validation__already_a_member(self):
+        users = baker.make(User, _quantity=3)
+        usernames = [user.username for user in users]
+        event = self.event1
+        event.invited_users.add(*users)
+
+        self.client.force_authenticate(user=event.creator)
+        url = self.get_invite_members_url(event.pk)
+        data = {'member_usernames': usernames}
+        res = self.client.post(url, data)
+        self.assertEqual(res.status_code, 400)
+
+        msg_arg = ', '.join(usernames)
+        self.assertDictEqual(res.json(), {'member_usernames': [f'These users are already invited: {msg_arg}.']})
+
+    def test__invite_validation__already_is_creator(self):
+        event = self.event1
+        self.client.force_authenticate(user=event.creator)
+        url = self.get_invite_members_url(event.pk)
+        data = {'member_usernames': [event.creator.username]}
+        res = self.client.post(url, data)
+        self.assertEqual(res.status_code, 400)
+        self.assertDictEqual(res.json(), {'member_usernames': [f'This user is already the creator of the event: {event.creator.username}.']})
+
+    def test__cancel_invite_validation__not_invited(self):
+        users = baker.make(User, _quantity=3)
+        usernames = [user.username for user in users]
+        event = self.event1
+
+        self.client.force_authenticate(user=event.creator)
+        url = self.get_cancel_invite_members_url(event.pk)
+        data = {'member_usernames': usernames}
+        res = self.client.post(url, data)
+        self.assertEqual(res.status_code, 400)
+
+        msg_arg = ', '.join(usernames)
+        self.assertDictEqual(res.json(), {'member_usernames': [f'These users are not invited: {msg_arg}.']})
+
+    def test__cancel_invite_validation__invitation_accepted(self):
+        users = baker.make(User, _quantity=3)
+        usernames = [user.username for user in users]
+        event = self.event1
+        event.invited_users.add(*users)
+
+        status = EventInvitation.Statuses.ACCEPTED
+        invitations = EventInvitation.objects.filter(user__username__in=usernames)
+        invitations.update(status=status)
+
+        self.client.force_authenticate(user=event.creator)
+        url = self.get_cancel_invite_members_url(event.pk)
+        data = {'member_usernames': usernames}
+        res = self.client.post(url, data)
+        self.assertEqual(res.status_code, 400)
+
+        msg_arg = ', '.join(invitation.user.username for invitation in invitations)
+        self.assertDictEqual(res.json(), {'member_usernames': [f'These users already accepted their invitations: {msg_arg}.']})
+
+    @parameterized.expand([
+        ['invite'],
+        ['cancel_invite'],
+    ])
+    def test__invite_or_cancel_invite__permission(self, action):
+        users = baker.make(User, _quantity=3)
+        usernames = [user.username for user in users]
+        event = self.event2
+        url = getattr(self, f'get_{action}_members_url')(event.pk)
+        data = {'member_usernames': usernames}
+
+        if action == 'cancel_invite':
+            event.invited_users.add(*users)
+
+        # Unauthenticated user cannot access
+        self.client.force_authenticate(user=None)
+        res = self.client.post(url, data)
+        self.assertEqual(res.status_code, 401)
+
+        # Member cannot invite/cancel-invite
+        member = random.choice(event.members.all())
+        self.client.force_authenticate(user=member)
+        res = self.client.post(url, data)
+        self.assertEqual(res.status_code, 403)
+
+        # Other event's creator/member cannot access
+        other_creator = baker.make(User)
+        other_members = baker.make(User, _quantity=2)
+        other_event = baker.make(Event, creator=other_creator)
+        other_event.members.add(other_creator, *other_members)
+
+        member = random.choice(other_members)
+        for user in [other_creator, member]:
+            self.client.force_authenticate(user=member)
+            res = self.client.post(url, data)
+            self.assertEqual(res.status_code, 404)
+
+        invited_users = event.invited_users.all()
+        for user in invited_users:
+            if action == 'invite':
+                self.assertNotIn(user, invited_users)
+            else:
+                self.assertIn(user, invited_users)
+
+        # Creator can invite/cancel-invite
+        self.client.force_authenticate(user=event.creator)
+        res = self.client.post(url, data)
+        self.assertEqual(res.status_code, 200)
+
+        invited_users = event.invited_users.all()
+        for user in invited_users:
+            if action == 'invite':
+                self.assertIn(user, invited_users)
+            else:
+                self.assertNotIn(user, invited_users)
