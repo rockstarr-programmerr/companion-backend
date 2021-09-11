@@ -5,6 +5,9 @@ from django.dispatch import receiver
 
 @receiver(post_save, sender=SocialAccount)
 def update_avatar(**kwargs):
+    if not kwargs['created']:
+        return
+
     social_account = kwargs['instance']
     user = social_account.user
 

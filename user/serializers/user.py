@@ -34,6 +34,11 @@ class UserSerializer(serializers.HyperlinkedModelSerializer):
             repr_['avatar_thumbnail'] = instance.social_avatar_url or None
         return repr_
 
+    def save(self, **kwargs):
+        if 'avatar' in self.validated_data and self.validated_data['avatar'] is None:
+            kwargs['social_avatar_url'] = ''
+        return super().save(**kwargs)
+
 
 class RegisterSerializer(serializers.ModelSerializer):
     class Meta:
