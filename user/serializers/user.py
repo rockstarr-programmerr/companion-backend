@@ -22,9 +22,17 @@ class UserSerializer(serializers.HyperlinkedModelSerializer):
         }
 
     def validate(self, attrs):
+        attrs = super().validate(attrs)
         if 'avatar' in attrs:
             attrs['avatar_thumbnail'] = attrs['avatar']
         return attrs
+
+    def to_representation(self, instance):
+        repr_ = super().to_representation(instance)
+        if not repr_['avatar']:
+            repr_['avatar'] = instance.social_avatar_url or None
+            repr_['avatar_thumbnail'] = instance.social_avatar_url or None
+        return repr_
 
 
 class RegisterSerializer(serializers.ModelSerializer):

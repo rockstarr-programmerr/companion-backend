@@ -28,6 +28,11 @@ env = environ.Env(
     CORS_ALLOWED_ORIGINS=(list, [
         'http://localhost:8080',
     ]),
+    SOCIALACCOUNT_APP_USE_ENV=(bool, True),
+    SOCIALACCOUNT_GOOGLE_CLIENT_ID=(str, ''),
+    SOCIALACCOUNT_GOOGLE_SECRET=(str, ''),
+    SOCIALACCOUNT_GOOGLE_KEY=(str, ''),
+    SOCIALACCOUNT_GOOGLE_SCOPE=(list, ['profile', 'email']),
 )
 # reading .env file
 env_file = str(BASE_DIR / '.env')
@@ -55,10 +60,15 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django.contrib.sites',
     'rest_framework',
     'django_filters',
     'corsheaders',
     'crispy_forms',
+    'allauth',
+    'allauth.account',
+    'allauth.socialaccount',
+    'allauth.socialaccount.providers.google',
     'user.apps.UserConfig',
     'split_the_bill.apps.SplitTheBillConfig',
 ]
@@ -219,6 +229,26 @@ MEDIA_ROOT = BASE_DIR / 'media'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 LOGIN_REDIRECT_URL = '/'
+
+AUTHENTICATION_BACKENDS = [
+    'django.contrib.auth.backends.ModelBackend',
+    'allauth.account.auth_backends.AuthenticationBackend',
+]
+
+SITE_ID = 1
+
+SOCIALACCOUNT_PROVIDERS = {
+    'google': {
+        'SCOPE': env('SOCIALACCOUNT_GOOGLE_SCOPE'),
+    }
+}
+
+if env('SOCIALACCOUNT_APP_USE_ENV'):
+    SOCIALACCOUNT_PROVIDERS['google']['APP'] = {
+        'client_id': env('SOCIALACCOUNT_GOOGLE_CLIENT_ID'),
+        'secret': env('SOCIALACCOUNT_GOOGLE_SECRET'),
+        'key': env('SOCIALACCOUNT_GOOGLE_KEY'),
+    }
 
 IS_TESTING = 'test' in sys.argv
 

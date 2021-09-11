@@ -31,6 +31,7 @@ class User(AbstractUser):
         blank=True,
         validators=[validate_image_file_extension]
     )
+    social_avatar_url = models.URLField(blank=True)
 
     def __str__(self):
         text = self.username
