@@ -431,6 +431,15 @@ class UserMyInfoTestCase(_UserTestCase):
         res = req_method(self.my_info_url)
         self.assertEqual(res.status_code, 405)
 
+    def test__bug__cannot_patch(self):
+        self.client.force_authenticate(user=self.user)
+        email = fake.email()
+        data = {'email': email}
+        res = self.client.patch(self.my_info_url, data)
+        self.assertEqual(res.status_code, 200)
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.email, email)
+
 
 class UserSearchTestCase(_UserTestCase):
     url = reverse('user-search')
