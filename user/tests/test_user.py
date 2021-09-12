@@ -431,6 +431,40 @@ class UserMyInfoTestCase(_UserTestCase):
         res = req_method(self.my_info_url)
         self.assertEqual(res.status_code, 405)
 
+    def test__bug__cannot_patch(self):
+        self.client.force_authenticate(user=self.user)
+        email = fake.email()
+        data = {'email': email}
+        res = self.client.patch(self.my_info_url, data)
+        self.assertEqual(res.status_code, 200)
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.email, email)
+
+    def test__remove_avatar(self):
+        """
+        If you has both `avatar` and `social_avatar_url`,
+        then when they remove `avatar`, `social_avatar_url` will also be remove
+        """
+        self.client.force_authenticate(user=self.user)
+        url = self.my_info_url
+
+        avatar_path = Path(__file__).parent / 'assets' / 'avatar.jpg'
+        with open(avatar_path, 'rb') as avatar:
+            data = {'avatar': avatar}
+            self.client.patch(url, data, format='multipart')
+
+        social_avatar_url = fake.url()
+        self.user.social_avatar_url = social_avatar_url
+        self.user.save()
+
+        self.client.patch(url, {'avatar': None})
+        self.user.refresh_from_db()
+        with self.assertRaises(ValueError):
+            self.user.avatar.path
+            self.user.avatar_thumbnail.path
+        self.assertEqual(self.user.avatar_thumbnail, '')
+        self.assertEqual(self.user.social_avatar_url, '')
+
 
 class UserSearchTestCase(_UserTestCase):
     url = reverse('user-search')

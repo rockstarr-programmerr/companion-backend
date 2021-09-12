@@ -9,13 +9,28 @@ class CustomBrowsableAPIRenderer(BrowsableAPIRenderer):
         """
         Temporary patch a bug DRF, where it failed to "Infer if this is a list view or not"
         It did so by some hacky maneuver, which failed when a list view return error response (i.e. not 200)
-        So here, instead of that, we just inspect `view.detail`
+        So here, instead of that, we just inspect `view.detail` if it's generic view
         """
         if not hasattr(view, 'get_queryset') or not hasattr(view, 'filter_backends'):
             return
 
         # Infer if this is a list view or not.
-        if view.detail:
+        is_detail = False
+        if hasattr(view, 'detail'):
+            is_detail = view.detail
+        else:
+            paginator = getattr(view, 'paginator', None)
+            if isinstance(data, list):
+                pass
+            elif paginator is not None and data is not None:
+                try:
+                    paginator.get_results(data)
+                except (TypeError, KeyError):
+                    is_detail = True
+            elif not isinstance(data, list):
+                is_detail = True
+
+        if is_detail:
             return
 
         queryset = view.get_queryset()
