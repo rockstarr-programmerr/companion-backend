@@ -25,6 +25,7 @@ class RootAPIView(APIView):
                 'refresh_token': reverse('token_refresh', request=request),
                 'social_authen': {
                     'google': reverse('social_account_google_authen', request=request),
+                    'facebook': reverse('social_account_facebook_authen', request=request),
                 }
             }
             if settings.DEBUG:

@@ -10,9 +10,14 @@ def update_avatar(**kwargs):
 
     social_account = kwargs['instance']
     user = social_account.user
-
     extra_data = social_account.extra_data
-    social_avatar_url = extra_data.get('picture', '')
+
+    if social_account.provider == 'google':
+        social_avatar_url = extra_data.get('picture', '')
+    elif social_account.provider == 'facebook':
+        social_avatar_url = extra_data.get('picture', {}).get('data', {}).get('url', '')
+    else:
+        raise Exception(f'Unknown provider: {social_account.provider}.')
 
     if user.social_avatar_url != social_avatar_url:
         user.social_avatar_url = social_avatar_url

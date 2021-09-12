@@ -32,7 +32,6 @@ env = environ.Env(
     SOCIALACCOUNT_GOOGLE_CLIENT_ID=(str, ''),
     SOCIALACCOUNT_GOOGLE_SECRET=(str, ''),
     SOCIALACCOUNT_GOOGLE_KEY=(str, ''),
-    SOCIALACCOUNT_GOOGLE_SCOPE=(list, ['profile', 'email']),
 )
 # reading .env file
 env_file = str(BASE_DIR / '.env')
@@ -69,6 +68,7 @@ INSTALLED_APPS = [
     'allauth.account',
     'allauth.socialaccount',
     'allauth.socialaccount.providers.google',
+    'allauth.socialaccount.providers.facebook',
     'user.apps.UserConfig',
     'split_the_bill.apps.SplitTheBillConfig',
 ]
@@ -239,7 +239,24 @@ SITE_ID = 1
 
 SOCIALACCOUNT_PROVIDERS = {
     'google': {
-        'SCOPE': env('SOCIALACCOUNT_GOOGLE_SCOPE'),
+        'SCOPE': ['profile', 'email'],
+    },
+    'facebook': {
+        'METHOD': 'oauth2',
+        'SCOPE': ['email', 'public_profile'],
+        'FIELDS': [
+            'id',
+            'email',
+            'first_name',
+            'last_name',
+            'middle_name',
+            'name',
+            'name_format',
+            'picture',
+            'short_name',
+        ],
+        'VERIFIED_EMAIL': True,
+        'VERSION': 'v11.0',
     }
 }
 
