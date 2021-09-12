@@ -18,7 +18,8 @@ urlpatterns = [
     path('login/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('token-refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('me/info/', views.MyInfoViewSet.as_view({'get': 'retrieve', 'put': 'update', 'patch': 'partial_update'}), name='user-my-info'),
-    path('accounts/', include('allauth.urls')),
+    path('accounts/', include('allauth.urls')),  # TODO: remove
+    path('social-account/', include('user.views.social_account.urls')),
 ]
 
 router = DefaultRouter()

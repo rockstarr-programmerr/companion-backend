@@ -21,6 +21,11 @@ class RootAPIView(APIView):
         else:
             data = {
                 'register': reverse('user-register', request=request),
+                'login': reverse('token_obtain_pair', request=request),
+                'refresh_token': reverse('token_refresh', request=request),
+                'social_authen': {
+                    'google': reverse('social_account_google_authen', request=request),
+                }
             }
             if settings.DEBUG:
                 data['browsable_api_login'] = reverse('rest_framework:login', request=request)
