@@ -32,6 +32,9 @@ env = environ.Env(
     SOCIALACCOUNT_GOOGLE_CLIENT_ID=(str, ''),
     SOCIALACCOUNT_GOOGLE_SECRET=(str, ''),
     SOCIALACCOUNT_GOOGLE_KEY=(str, ''),
+    SOCIALACCOUNT_FACEBOOK_CLIENT_ID=(str, ''),
+    SOCIALACCOUNT_FACEBOOK_SECRET=(str, ''),
+    SOCIALACCOUNT_FACEBOOK_KEY=(str, ''),
 )
 # reading .env file
 env_file = str(BASE_DIR / '.env')
@@ -265,6 +268,11 @@ if env('SOCIALACCOUNT_APP_USE_ENV'):
         'client_id': env('SOCIALACCOUNT_GOOGLE_CLIENT_ID'),
         'secret': env('SOCIALACCOUNT_GOOGLE_SECRET'),
         'key': env('SOCIALACCOUNT_GOOGLE_KEY'),
+    }
+    SOCIALACCOUNT_PROVIDERS['facebook']['APP'] = {
+        'client_id': env('SOCIALACCOUNT_FACEBOOK_CLIENT_ID'),
+        'secret': env('SOCIALACCOUNT_FACEBOOK_SECRET'),
+        'key': env('SOCIALACCOUNT_FACEBOOK_KEY'),
     }
 
 IS_TESTING = 'test' in sys.argv
