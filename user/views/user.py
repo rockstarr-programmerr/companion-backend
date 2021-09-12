@@ -49,11 +49,10 @@ class UserViewSet(mixins.RetrieveModelMixin,
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        username = serializer.validated_data['username']
-        email = serializer.validated_data.get('email')
+        email = serializer.validated_data['email']
         password = serializer.validated_data['password']
 
-        user = User.objects.create_user(username, email=email, password=password)
+        user = User.objects.create_user(email=email, password=password)
 
         serializer = self.get_serializer(instance=user)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
