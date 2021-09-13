@@ -23,5 +23,5 @@ class EventInvitationViewSet(mixins.ListModelMixin,
     serializer_class = EventInvitationRequestSerializer
     filterset_class = EventInvitationFilter
     permission_classes = [IsEventCreatorOrReadonly]
-    ordering_fields = ['username', 'create_time', 'update_time']
+    ordering_fields = ['user__nickname', 'user__email', 'create_time', 'update_time']
     ordering = ['create_time']

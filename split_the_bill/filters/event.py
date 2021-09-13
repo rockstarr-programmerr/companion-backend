@@ -9,6 +9,6 @@ class EventFilter(filters.FilterSet):
         fields = {
             'name': ['exact', 'icontains'],
             'creator': ['exact'],
-            'creator__username': ['exact', 'icontains'],
+            'creator__nickname': ['exact', 'icontains'],
             'creator__email': ['exact', 'icontains'],
         }

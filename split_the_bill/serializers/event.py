@@ -60,68 +60,68 @@ class _EventMembersSerializer(serializers.Serializer):
 
 
 class InviteMembersSerializer(_EventMembersSerializer):
-    member_usernames = ListField(child=serializers.CharField(), allow_empty=False, max_length=100)
+    member_emails = ListField(child=serializers.EmailField(), allow_empty=False, max_length=100)
 
-    def validate_member_usernames(self, usernames):
-        self._validate_alread_invited(usernames)
-        self._validate_invite_creator(usernames)
-        return usernames
+    def validate_member_emails(self, emails):
+        self._validate_alread_invited(emails)
+        self._validate_invite_creator(emails)
+        return emails
 
-    def _validate_alread_invited(self, usernames):
+    def _validate_alread_invited(self, emails):
         invited_users = self.event.invited_users.all()
-        invited_usernames = [user.username for user in invited_users]
+        invited_emails = [user.email for user in invited_users]
 
         already_invited = []
-        for username in usernames:
-            if username in invited_usernames:
-                already_invited.append(username)
+        for email in emails:
+            if email in invited_emails:
+                already_invited.append(email)
 
         if already_invited:
             raise serializers.ValidationError(
                 _('These users are already invited: %s.') % ', '.join(already_invited)
             )
 
-    def _validate_invite_creator(self, usernames):
-        creator_username = ''
-        for username in usernames:
-            if username == self.event.creator.username:
-                creator_username = username
+    def _validate_invite_creator(self, emails):
+        creator_email = ''
+        for email in emails:
+            if email == self.event.creator.email:
+                creator_email = email
 
-        if creator_username:
+        if creator_email:
             raise serializers.ValidationError(
-                _('This user is already the creator of the event: %s.') % creator_username
+                _('This user is already the creator of the event: %s.') % creator_email
             )
 
 
 class CancelInviteMembersSerializer(_EventMembersSerializer):
-    member_usernames = ListField(child=serializers.CharField(), allow_empty=False, max_length=100)
+    member_emails = ListField(child=serializers.CharField(), allow_empty=False, max_length=100)
 
-    def validate_member_usernames(self, usernames):
-        invitations = EventInvitation.objects.filter(user__username__in=usernames)\
+    def validate_member_emails(self, emails):
+        invitations = EventInvitation.objects.filter(user__email__in=emails)\
                                              .select_related('user')
 
-        self._validate_not_invited(usernames, invitations)
-        self._validate_invitation_accepted(usernames, invitations)
-        return usernames
+        self._validate_not_invited(emails, invitations)
+        self._validate_invitation_accepted(emails, invitations)
+        return emails
 
-    def _validate_not_invited(self, usernames, invitations):
-        invited_usernames = [invitation.user.username for invitation in invitations]
+    def _validate_not_invited(self, emails, invitations):
+        invited_emails = [invitation.user.email for invitation in invitations]
 
         not_invited = []
-        for username in usernames:
-            if username not in invited_usernames:
-                not_invited.append(username)
+        for email in emails:
+            if email not in invited_emails:
+                not_invited.append(email)
 
         if not_invited:
             raise serializers.ValidationError(
                 _('These users are not invited: %s.') % ', '.join(not_invited)
             )
 
-    def _validate_invitation_accepted(self, usernames, invitations):
+    def _validate_invitation_accepted(self, emails, invitations):
         invitations_accepted = []
         for invitation in invitations:
-            if invitation.is_accepted() and invitation.user.username in usernames:
-                invitations_accepted.append(invitation.user.username)
+            if invitation.is_accepted() and invitation.user.email in emails:
+                invitations_accepted.append(invitation.user.email)
 
         if invitations_accepted:
             raise serializers.ValidationError(

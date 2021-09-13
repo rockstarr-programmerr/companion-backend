@@ -10,7 +10,7 @@ User = get_user_model()
 class _EventCreatorSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ['username', 'email', 'avatar', 'avatar_thumbnail']
+        fields = ['nickname', 'email', 'avatar', 'avatar_thumbnail']
 
 
 class _EventSerializer(serializers.ModelSerializer):

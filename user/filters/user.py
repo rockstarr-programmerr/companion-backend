@@ -10,7 +10,8 @@ class UserFilter(filters.FilterSet):
     class Meta:
         model = User
         fields = {
-            'username': ['icontains'],
+            'nickname': ['icontains'],
+            'email': ['icontains'],
         }
 
     @property

@@ -3,6 +3,7 @@ from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
 
 from companion.utils.api import extra_action_urls
+from split_the_bill.business import event as event_business
 from split_the_bill.filters import EventFilter
 from split_the_bill.permissions import IsEventCreatorOrReadonly
 from split_the_bill.serializers.event import (CancelInviteMembersSerializer,
@@ -39,8 +40,8 @@ class EventViewSet(ModelViewSet):
         serializer = self.get_serializer(data=request.data, event=event)
         serializer.is_valid(raise_exception=True)
 
-        member_usernames = serializer.validated_data['member_usernames']
-        event.invite_members_by_usernames(member_usernames)
+        member_emails = serializer.validated_data['member_emails']
+        event.invite_members_by_emails(member_emails)
 
         return Response()
 
@@ -54,8 +55,8 @@ class EventViewSet(ModelViewSet):
         serializer = self.get_serializer(data=request.data, event=event)
         serializer.is_valid(raise_exception=True)
 
-        member_usernames = serializer.validated_data['member_usernames']
-        event.cancel_invite_members_by_usernames(member_usernames)
+        member_emails = serializer.validated_data['member_emails']
+        event.cancel_invite_members_by_emails(member_emails)
 
         return Response()
 
@@ -70,6 +71,6 @@ class EventViewSet(ModelViewSet):
         serializer.is_valid(raise_exception=True)
 
         member_pks = serializer.validated_data['member_pks']
-        event.members.remove(*member_pks)
+        event_business.remove_members(event, member_pks)
 
         return Response()
