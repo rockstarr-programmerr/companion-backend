@@ -3,12 +3,10 @@ from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
 from rest_framework.reverse import reverse
 
-from user.models import USERNAME_MIN_LENGTH
-
 User = get_user_model()
 
 
-USER_SERIALIZER_FIELDS = ['url', 'pk', 'username', 'email', 'avatar', 'avatar_thumbnail']
+USER_SERIALIZER_FIELDS = ['url', 'pk', 'nickname', 'email', 'avatar', 'avatar_thumbnail']
 
 class UserSerializer(serializers.HyperlinkedModelSerializer):
     class Meta:
@@ -52,18 +50,21 @@ class RegisterSerializer(serializers.ModelSerializer):
         }
 
 
-class UserSearchSerializer(serializers.HyperlinkedModelSerializer):
+class UserSearchSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ['username', 'avatar_thumbnail']
+        fields = ['nickname', 'email', 'avatar_thumbnail']
         extra_kwargs = {
-            'username': {
-                'min_length': USERNAME_MIN_LENGTH,
-            },
-            'avatar_thumbnail': {
-                'read_only': True,
-            }
+            'nickname': {'read_only': True},
+            'email': {'read_only': True},
+            'avatar_thumbnail': {'read_only': True},
         }
+
+    def to_representation(self, instance):
+        repr_ = super().to_representation(instance)
+        if not repr_['avatar_thumbnail']:
+            repr_['avatar_thumbnail'] = instance.social_avatar_url or None
+        return repr_
 
 class MyInfoSerializer(UserSerializer):
     event_invitations_url = serializers.SerializerMethodField()

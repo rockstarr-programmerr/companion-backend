@@ -1,6 +1,6 @@
 import django_filters
 from django.contrib.auth import get_user_model
-from django.core.validators import MinLengthValidator
+from django.db.models.query_utils import Q
 from django_filters import rest_framework as filters
 
 User = get_user_model()
@@ -30,13 +30,17 @@ class UserFilter(filters.FilterSet):
 
 
 class UserSearchFilter(filters.FilterSet):
-    username__icontains = django_filters.CharFilter(
-        field_name='username',
-        lookup_expr='icontains',
+    nickname_or_email__icontains = django_filters.CharFilter(
         required=True,
-        validators=[MinLengthValidator(3)]
+        method='filter_nickname_or_email',
+        label='Nickname or email contains',
     )
+
+    def filter_nickname_or_email(self, queryset, name, value):
+        # TODO: fuzzy search using MATCH AGAINST?
+        condition = Q(nickname__icontains=value) | Q(email__icontains=value)
+        return queryset.filter(condition).exclude(pk=self.request.user.pk)
 
     class Meta:
         model = User
-        fields = ['username__icontains']
+        fields = ['nickname_or_email__icontains']

@@ -4,7 +4,6 @@ from django.db import models
 from django.utils.translation import gettext_lazy as _
 from PIL import Image
 
-USERNAME_MIN_LENGTH = 3
 AVATAR_WIDTH = 256
 AVATAR_HEIGHT = 256
 AVATAR_THUMBNAIL_WIDTH = 64
