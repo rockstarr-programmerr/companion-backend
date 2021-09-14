@@ -19,10 +19,10 @@ class Event(TimeStamp):
     def is_creator(self, user):
         return user == self.creator
 
-    def invite_members_by_usernames(self, usernames):
-        users = User.objects.filter(username__in=usernames)
+    def invite_members_by_emails(self, emails):
+        users = User.objects.filter(email__in=emails)
         self.invited_users.add(*users)
 
-    def cancel_invite_members_by_usernames(self, usernames):
-        users = User.objects.filter(username__in=usernames)
+    def cancel_invite_members_by_emails(self, emails):
+        users = User.objects.filter(email__in=emails)
         self.invited_users.remove(*users)

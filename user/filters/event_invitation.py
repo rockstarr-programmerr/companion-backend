@@ -9,7 +9,7 @@ class UserEventInvitationFilter(filters.FilterSet):
         fields = {
             'event': ['exact'],
             'event__name': ['icontains'],
-            'event__creator__username': ['icontains'],
+            'event__creator__nickname': ['icontains'],
             'event__creator__email': ['icontains'],
             'status': ['in'],
             'create_time': ['gte', 'lte'],

@@ -10,30 +10,30 @@ User = get_user_model()
 
 
 class EventInvitationRequestSerializer(serializers.HyperlinkedModelSerializer):
-    username = serializers.CharField(source='user.username')
+    email = serializers.CharField(source='user.email')
 
     class Meta:
         model = EventInvitation
-        fields = ['event', 'username']
+        fields = ['event', 'email']
 
     def to_representation(self, invitation):
         serializer = EventInvitationResponseSerializer(instance=invitation, context=self.context)
         return serializer.data
 
-    def validate_username(self, username):
-        if username == self.context['request'].user.username:
+    def validate_email(self, email):
+        if email == self.context['request'].user.email:
             raise serializers.ValidationError(
                 _('You cannot invite yourself.')
             )
-        if EventInvitation.objects.filter(user__username=username).exists():
+        if EventInvitation.objects.filter(user__email=email).exists():
             raise serializers.ValidationError(
                 _('This user is already invited or is already a member.')
             )
-        return username
+        return email
 
     def create(self, validated_data):
-        username = validated_data['user']['username']
-        user = get_object_or_404(User, username=username)
+        email = validated_data['user']['email']
+        user = get_object_or_404(User, email=email)
         validated_data['user'] = user
         return super().create(validated_data)
 

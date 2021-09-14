@@ -1,0 +1,11 @@
+[run]
+branch = true
+command_line = manage.py test
+source = .
+omit =
+    .venv/*
+    */migrations/*
+    */tests/*
+    manage.py
+    companion/asgi.py
+    companion/wsgi.py

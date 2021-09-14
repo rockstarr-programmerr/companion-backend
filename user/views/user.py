@@ -27,15 +27,15 @@ class UserViewSet(mixins.RetrieveModelMixin,
     Only show users who participated the same events as the logged in user.
 
     Endpoints for authentication:
-    "user/login/": Login with credential (username, password), response with "access" and "refresh" token.
+    "user/login/": Login with credential (email, password), response with "access" and "refresh" token.
     "user/token-refresh/": Refresh token, response with another "access" and "refresh" token.
     """
     queryset = User.objects.all()
     serializer_class = UserSerializer
     filterset_class = UserFilter
     permission_classes = [IsSelfOrReadOnly]
-    ordering_fields = ['username', 'email']
-    ordering = ['username']
+    ordering_fields = ['nickname', 'email']
+    ordering = ['nickname']
 
     @action(
         detail=False, methods=['POST'], url_path='register',
@@ -49,11 +49,10 @@ class UserViewSet(mixins.RetrieveModelMixin,
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        username = serializer.validated_data['username']
-        email = serializer.validated_data.get('email')
+        email = serializer.validated_data['email']
         password = serializer.validated_data['password']
 
-        user = User.objects.create_user(username, email=email, password=password)
+        user = User.objects.create_user(email=email, password=password)
 
         serializer = self.get_serializer(instance=user)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
@@ -63,12 +62,9 @@ class UserViewSet(mixins.RetrieveModelMixin,
         serializer_class=UserSearchSerializer,
         filterset_class=UserSearchFilter,
         pagination_class=UserSearchPagination,
-        ordering_fields=['username']
+        ordering_fields=['nickname', 'email']
     )
     def search(self, request):
-        """
-        When searching by username, only username are returned, not all user's info
-        """
         queryset = self.filter_queryset(self.get_queryset())
         page = self.paginate_queryset(queryset)
         serializer = self.get_serializer(instance=page, many=True)
