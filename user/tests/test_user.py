@@ -51,7 +51,7 @@ class _UserTestCase(APITestCase):
         return {
             'url': reverse('user-detail', kwargs={'pk': user.pk}, request=request),
             'pk': user.pk,
-            'username': user.username,
+            'nickname': user.nickname,
             'email': user.email,
             'avatar': user.avatar.path if user.avatar else None,
             'avatar_thumbnail': user.avatar_thumbnail.path if user.avatar_thumbnail else None,
@@ -95,11 +95,11 @@ class UserReadTestCase(_UserTestCase):
             user = random.choice(self.share_members)
             users = list(self.event1.members.all()) + list(self.event2.members.all())
             users = list(set(users))  # Make unique
-            users.sort(key=lambda user: user.username)
+            users.sort(key=lambda user: user.nickname)
         else:
             event = getattr(self, f'event{event_number}')
             user = random.choice(getattr(self, f'members{event_number}'))
-            users = event.members.all().order_by('username')
+            users = event.members.all().order_by('nickname')
 
         self.client.force_authenticate(user=user)
         res = self.client.get(self.url)
@@ -185,10 +185,10 @@ class UserUpdateTestCase(_UserTestCase):
         url = self.get_detail_url(user.pk)
         req_method = getattr(self.client, method)
 
-        new_username = fake.text(max_nb_chars=10)
+        new_nickname = fake.text(max_nb_chars=10)
         new_email = fake.email()
         data = {
-            'username': new_username,
+            'nickname': new_nickname,
             'email': new_email,
         }
         res = req_method(url, data)
@@ -196,7 +196,7 @@ class UserUpdateTestCase(_UserTestCase):
 
         # Test DB
         user.refresh_from_db()
-        self.assertEqual(user.username, new_username)
+        self.assertEqual(user.nickname, new_nickname)
         self.assertEqual(user.email, new_email)
 
         # Test Response
@@ -290,10 +290,10 @@ class UserUpdateTestCase(_UserTestCase):
         res = self.client.get(url)
         self.assertEqual(res.status_code, 200)
 
-        new_username = fake.text(max_nb_chars=10)
+        new_nickname = fake.text(max_nb_chars=10)
         new_email = fake.email()
         data = {
-            'username': new_username,
+            'nickname': new_nickname,
             'email': new_email,
         }
         res = self.client.put(url, data)
@@ -329,28 +329,26 @@ class UserRegisterTestCase(APITestCase):
     def test__register_user(self):
         self.client.force_authenticate(user=None)
 
-        username = fake.text(max_nb_chars=150)
         email = fake.email()
         password = fake.password()
 
-        res = self.client.post(self.url, {'username': username, 'email': email, 'password': password})
+        res = self.client.post(self.url, {'email': email, 'password': password})
         self.assertEqual(res.status_code, 201)
 
         # Check response
         actual = res.json()
         expected = json.dumps({
-            'username': username,
             'email': email,
         })
         self. assertJSONEqual(expected, actual)
 
         # Check DB
-        user = User.objects.filter(username=username).first()
+        user = User.objects.filter(email=email).first()
         self.assertIsNotNone(user)
-        self.assertEqual(user.email, email)
+        self.assertEqual(user.nickname, email.split('@')[0])
 
         # Check if this user can now be authenticate with that password
-        res = self.client.post(self.login_url, {'username': username, 'password': password})
+        res = self.client.post(self.login_url, {'email': email, 'password': password})
         data = res.json()
         access_token = data.get('access')
         self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {access_token}')
@@ -391,16 +389,16 @@ class UserMyInfoTestCase(_UserTestCase):
         ['patch'],
     ])
     def test__update_my_info(self, method):
-        username = fake.text(max_nb_chars=150)
+        nickname = fake.text(max_nb_chars=150)
         email = fake.email()
 
         req_method = getattr(self.client, method)
-        res = req_method(self.my_info_url, {'username': username, 'email': email})
+        res = req_method(self.my_info_url, {'nickname': nickname, 'email': email})
         self.assertEqual(res.status_code, 200)
 
         # Check DB
         self.user.refresh_from_db()
-        self.assertEqual(self.user.username, username)
+        self.assertEqual(self.user.nickname, nickname)
         self.assertEqual(self.user.email, email)
 
         # Check response
@@ -471,40 +469,54 @@ class UserSearchTestCase(_UserTestCase):
 
     def setUp(self):
         super().setUp(create_data=False)
-        baker.make(User, username='Carl Johnson')
-        baker.make(User, username='BigSmoke')
-        baker.make(User, username='Sweet')
-        baker.make(User, username='Ryder')
-        baker.make(User, username='Brian')
-        baker.make(User, username='BigBear')
-        baker.make(User, username='LittleBear')
+        baker.make(User, nickname='Carl Johnson', email='johnson@grove.street')
+        baker.make(User, nickname='BigSmoke', email='bigsmoke@grove.street')
+        baker.make(User, nickname='Sweet', email='king@grove.street')
+        baker.make(User, nickname='Ryder', email='ryder@grove.street')
+        baker.make(User, nickname='Brian', email='brian@sweet.street')
+        baker.make(User, nickname='BigBear', email='bigbear@grove.street')
+        baker.make(User, nickname='LittleBear', email='littlebear@grove.street')
 
     @parameterized.expand([
-        ['big', ['BigSmoke', 'BigBear']],
-        ['bear', ['BigBear', 'LittleBear']],
-        ['arl', ['Carl Johnson']],
+        ['big', ['bigsmoke@grove.street', 'bigbear@grove.street']],
+        ['bear', ['bigbear@grove.street', 'littlebear@grove.street']],
+        ['arl', ['johnson@grove.street']],
         ['The Truth', []],
+        ['king', ['king@grove.street']],
+        ['sweet', ['king@grove.street', 'brian@sweet.street']],
     ])
-    def test__search(self, query, expected_usernames):
-        user = User.objects.first()
+    def test__search(self, query, expected_emails):
+        user = baker.make(User)
         self.client.force_authenticate(user=user)
-        data = {'username__icontains': query}
+        data = {'nickname_or_email__icontains': query}
         res = self.client.get(self.url, data)
         self.assertEqual(res.status_code, 200)
 
-        expected_usernames.sort()
+        users = User.objects.filter(email__in=expected_emails).order_by('nickname')
         actual = res.json()
         expected = json.dumps(self.get_pagination_json([
             {
-                'username': username,
+                'nickname': user.nickname,
+                'email': user.email,
                 'avatar_thumbnail': None,
             }
-            for username in expected_usernames
+            for user in users
         ], extra_actions=False))
         self.assertJSONEqual(expected, actual)
 
+    def test__search__dont_find_yourself(self):
+        user = baker.make(User)
+        self.client.force_authenticate(user=user)
+        data = {'nickname_or_email__icontains': user.nickname}
+        res = self.client.get(self.url, data)
+        self.assertEqual(res.status_code, 200)
+
+        actual = res.json()
+        expected = json.dumps(self.get_pagination_json([], extra_actions=False))
+        self.assertJSONEqual(expected, actual)
+
     def test__search_permission(self):
-        data = {'username__icontains': 'something'}
+        data = {'nickname_or_email__icontains': 'something'}
 
         # Unauthenticated user cannot access
         self.client.force_authenticate(user=None)
@@ -514,10 +526,10 @@ class UserSearchTestCase(_UserTestCase):
     def test__validation(self):
         user = User.objects.first()
         self.client.force_authenticate(user=user)
-        data = {'username__icontains': 'ab'}
+        data = {'nickname_or_email__icontains': ''}
         res = self.client.get(self.url, data)
         self.assertEqual(res.status_code, 400)
-        self.assertDictEqual(res.json(), {'username__icontains': ['Ensure this value has at least 3 characters (it has 2).']})
+        self.assertDictEqual(res.json(), {'nickname_or_email__icontains': ['This field is required.']})
 
 
 class UserMyEventInvitationTestCase(_UserTestCase):
@@ -535,7 +547,7 @@ class UserMyEventInvitationTestCase(_UserTestCase):
             'event': {
                 'name': invitation.event.name,
                 'creator': {
-                    'username': invitation.event.creator.username,
+                    'nickname': invitation.event.creator.nickname,
                     'email': invitation.event.creator.email,
                     'avatar': invitation.event.creator.avatar.url if invitation.event.creator.avatar else None,
                     'avatar_thumbnail': invitation.event.creator.avatar_thumbnail.url if invitation.event.creator.avatar_thumbnail else None,
