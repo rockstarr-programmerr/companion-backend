@@ -134,7 +134,7 @@ class _TransactionTestCase(APITestCase):
         return {
             'url': reverse('user-detail', kwargs={'pk': user.pk}, request=request),
             'pk': user.pk,
-            'username': user.username,
+            'nickname': user.nickname,
             'email': user.email,
             'avatar': user.avatar.path if user.avatar else None,
             'avatar_thumbnail': user.avatar_thumbnail.path if user.avatar_thumbnail else None,

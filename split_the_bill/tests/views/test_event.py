@@ -83,7 +83,7 @@ class _EventViewSetTestCase(APITestCase):
         return {
             'url': reverse('user-detail', kwargs={'pk': user.pk}, request=request),
             'pk': user.pk,
-            'username': user.username,
+            'nickname': user.nickname,
             'email': user.email,
             'avatar': user.avatar.path if user.avatar else None,
             'avatar_thumbnail': user.avatar_thumbnail.path if user.avatar_thumbnail else None,
@@ -394,6 +394,12 @@ class EventRemoveMembersTestCase(_EventViewSetTestCase):
 
         new_members = baker.make(User, _quantity=3)
         self.event1.members.add(*new_members)
+        for member in new_members:
+            EventInvitation.objects.create(
+                event=self.event1,
+                user=member,
+                status=EventInvitation.Statuses.ACCEPTED
+            )
         members = self.event1.members.all()
 
         for member in new_members:
@@ -410,6 +416,9 @@ class EventRemoveMembersTestCase(_EventViewSetTestCase):
         members = self.event1.members.all()
         for member in new_members:
             self.assertNotIn(member, members)
+
+        # After remove members, invitations are also removed
+        self.assertFalse(EventInvitation.objects.filter(event=self.event1, user__in=new_members).exists())
 
     def test__remove_members_validations(self):
         self.client.force_authenticate(user=self.creator)
@@ -471,7 +480,7 @@ class EventRemoveMembersTestCase(_EventViewSetTestCase):
 class EventInvitationTestCase(_EventViewSetTestCase):
     def test__invite_members(self):
         users = baker.make(User, _quantity=3)
-        usernames = [user.username for user in users]
+        emails = [user.email for user in users]
         event = self.event1
         invited_users = event.invited_users.all()
         for user in users:
@@ -479,7 +488,7 @@ class EventInvitationTestCase(_EventViewSetTestCase):
 
         self.client.force_authenticate(user=event.creator)
         url = self.get_invite_members_url(event.pk)
-        data = {'member_usernames': usernames}
+        data = {'member_emails': emails}
         res = self.client.post(url, data)
         self.assertEqual(res.status_code, 200)
 
@@ -489,7 +498,7 @@ class EventInvitationTestCase(_EventViewSetTestCase):
 
     def test__cancel_invite_members(self):
         users = baker.make(User, _quantity=3)
-        usernames = [user.username for user in users]
+        emails = [user.email for user in users]
         event = self.event1
         event.invited_users.add(*users)
 
@@ -499,7 +508,7 @@ class EventInvitationTestCase(_EventViewSetTestCase):
 
         self.client.force_authenticate(user=event.creator)
         url = self.get_cancel_invite_members_url(event.pk)
-        data = {'member_usernames': usernames}
+        data = {'member_emails': emails}
         res = self.client.post(url, data)
         self.assertEqual(res.status_code, 200)
 
@@ -509,60 +518,60 @@ class EventInvitationTestCase(_EventViewSetTestCase):
 
     def test__invite_validation__already_a_member(self):
         users = baker.make(User, _quantity=3)
-        usernames = [user.username for user in users]
+        emails = [user.email for user in users]
         event = self.event1
         event.invited_users.add(*users)
 
         self.client.force_authenticate(user=event.creator)
         url = self.get_invite_members_url(event.pk)
-        data = {'member_usernames': usernames}
+        data = {'member_emails': emails}
         res = self.client.post(url, data)
         self.assertEqual(res.status_code, 400)
 
-        msg_arg = ', '.join(usernames)
-        self.assertDictEqual(res.json(), {'member_usernames': [f'These users are already invited: {msg_arg}.']})
+        msg_arg = ', '.join(emails)
+        self.assertDictEqual(res.json(), {'member_emails': [f'These users are already invited: {msg_arg}.']})
 
     def test__invite_validation__already_is_creator(self):
         event = self.event1
         self.client.force_authenticate(user=event.creator)
         url = self.get_invite_members_url(event.pk)
-        data = {'member_usernames': [event.creator.username]}
+        data = {'member_emails': [event.creator.email]}
         res = self.client.post(url, data)
         self.assertEqual(res.status_code, 400)
-        self.assertDictEqual(res.json(), {'member_usernames': [f'This user is already the creator of the event: {event.creator.username}.']})
+        self.assertDictEqual(res.json(), {'member_emails': [f'This user is already the creator of the event: {event.creator.email}.']})
 
     def test__cancel_invite_validation__not_invited(self):
         users = baker.make(User, _quantity=3)
-        usernames = [user.username for user in users]
+        emails = [user.email for user in users]
         event = self.event1
 
         self.client.force_authenticate(user=event.creator)
         url = self.get_cancel_invite_members_url(event.pk)
-        data = {'member_usernames': usernames}
+        data = {'member_emails': emails}
         res = self.client.post(url, data)
         self.assertEqual(res.status_code, 400)
 
-        msg_arg = ', '.join(usernames)
-        self.assertDictEqual(res.json(), {'member_usernames': [f'These users are not invited: {msg_arg}.']})
+        msg_arg = ', '.join(emails)
+        self.assertDictEqual(res.json(), {'member_emails': [f'These users are not invited: {msg_arg}.']})
 
     def test__cancel_invite_validation__invitation_accepted(self):
         users = baker.make(User, _quantity=3)
-        usernames = [user.username for user in users]
+        emails = [user.email for user in users]
         event = self.event1
         event.invited_users.add(*users)
 
         status = EventInvitation.Statuses.ACCEPTED
-        invitations = EventInvitation.objects.filter(user__username__in=usernames)
+        invitations = EventInvitation.objects.filter(user__email__in=emails)
         invitations.update(status=status)
 
         self.client.force_authenticate(user=event.creator)
         url = self.get_cancel_invite_members_url(event.pk)
-        data = {'member_usernames': usernames}
+        data = {'member_emails': emails}
         res = self.client.post(url, data)
         self.assertEqual(res.status_code, 400)
 
-        msg_arg = ', '.join(invitation.user.username for invitation in invitations)
-        self.assertDictEqual(res.json(), {'member_usernames': [f'These users already accepted their invitations: {msg_arg}.']})
+        msg_arg = ', '.join(invitation.user.email for invitation in invitations)
+        self.assertDictEqual(res.json(), {'member_emails': [f'These users already accepted their invitations: {msg_arg}.']})
 
     @parameterized.expand([
         ['invite'],
@@ -570,10 +579,10 @@ class EventInvitationTestCase(_EventViewSetTestCase):
     ])
     def test__invite_or_cancel_invite__permission(self, action):
         users = baker.make(User, _quantity=3)
-        usernames = [user.username for user in users]
+        emails = [user.email for user in users]
         event = self.event2
         url = getattr(self, f'get_{action}_members_url')(event.pk)
-        data = {'member_usernames': usernames}
+        data = {'member_emails': emails}
 
         if action == 'cancel_invite':
             event.invited_users.add(*users)
