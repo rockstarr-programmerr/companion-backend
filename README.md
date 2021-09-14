@@ -64,10 +64,21 @@ http://localhost:8000/
 ```
 
 ### Test
-Run unittests:
+#### Run unittests
 ```
 python manage.py test
 ```
+
+#### Run coverage
+```
+coverage run
+```
+
+#### Get coverage report as html
+```
+coverage html
+```
+Your report is inside `htmlcov` directory.
 
 ## Production
 
