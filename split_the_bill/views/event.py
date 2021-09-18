@@ -1,15 +1,19 @@
 from rest_framework.decorators import action
+from rest_framework.permissions import IsAuthenticatedOrReadOnly
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
 
 from companion.utils.api import extra_action_urls
 from split_the_bill.business import event as event_business
 from split_the_bill.filters import EventFilter
+from split_the_bill.models import Event
 from split_the_bill.permissions import IsEventCreatorOrReadonly
 from split_the_bill.serializers.event import (CancelInviteMembersSerializer,
                                               EventSerializer,
                                               InviteMembersSerializer,
-                                              RemoveMembersSerializer)
+                                              JoinWithQRCodeSerializer,
+                                              RemoveMembersSerializer,
+                                              ResetQRCodeSerializer)
 
 
 @extra_action_urls
@@ -73,4 +77,40 @@ class EventViewSet(ModelViewSet):
         member_pks = serializer.validated_data['member_pks']
         event_business.remove_members(event, member_pks)
 
+        return Response()
+
+    @action(
+        methods=['POST', 'GET'], detail=False, url_path='join-with-qr',
+        serializer_class=JoinWithQRCodeSerializer,
+        permission_classes=[IsAuthenticatedOrReadOnly]
+    )
+    def join_with_qr(self, request):
+        """
+        Join event by scanning a QR code.
+        """
+        if request.method == 'GET':
+            return Response()  # TODO
+        else:
+            if request.accepted_renderer.format == 'api':
+                # When request comes from browsable API, also accept data
+                # from POST body for convenience
+                serializer = self.get_serializer(data=request.data)
+            else:
+                serializer = self.get_serializer(data=request.query_params)
+            serializer.is_valid(raise_exception=True)
+            token = serializer.validated_data['token']
+            Event.join_with_qr_code(request.user, token)
+            return Response()
+
+    @action(
+        methods=['POST'], detail=True, url_path='reset-qr',
+        serializer_class=ResetQRCodeSerializer,
+    )
+    def reset_qr(self, request, pk):
+        """
+        Get a new QR code for the event.
+        Old QR code is immediately invalidated.
+        """
+        event = self.get_object()
+        event.create_qr_code(request, reset_token=True)
         return Response()

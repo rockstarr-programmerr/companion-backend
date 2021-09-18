@@ -10,6 +10,7 @@ from parameterized import parameterized
 from rest_framework.reverse import reverse
 from rest_framework.test import APITestCase
 
+from companion.utils.testing import MediaTestCase
 from split_the_bill.models import Event, EventInvitation
 from split_the_bill.utils.datetime import format_iso
 from user.views import UserEventInvitationViewSet
@@ -174,7 +175,7 @@ class UserReadTestCase(_UserTestCase):
         self.assertEqual(res.status_code, 200)
 
 
-class UserUpdateTestCase(_UserTestCase):
+class UserUpdateTestCase(MediaTestCase, _UserTestCase):
     @parameterized.expand([
         ['put'],
         ['patch'],
@@ -357,7 +358,7 @@ class UserRegisterTestCase(APITestCase):
         self.assertEqual(res.status_code, 200)
 
 
-class UserMyInfoTestCase(_UserTestCase):
+class UserMyInfoTestCase(MediaTestCase, _UserTestCase):
     url = reverse('user-list')
     my_info_url = reverse('user-my-info')
 

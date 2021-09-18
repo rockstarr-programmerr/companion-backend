@@ -20,10 +20,13 @@ class EventSerializer(serializers.HyperlinkedModelSerializer):
     class Meta:
         model = Event
         fields = [
-            'url', 'pk', 'name',
+            'url', 'pk', 'name', 'qr_code',
             'creator', 'members', 'create_time',
             'transactions_url', 'invitations_url', 'extra_action_urls',
         ]
+        extra_kwargs = {
+            'qr_code': {'read_only': True},
+        }
 
     def get_transactions_url(self, event):
         url = reverse('transaction-list', request=self.context['request'])
@@ -44,7 +47,13 @@ class EventSerializer(serializers.HyperlinkedModelSerializer):
             'invite_members': reverse('event-invite-members', **kwargs),
             'cancel_invite_members': reverse('event-cancel-invite-members', **kwargs),
             'remove_members': reverse('event-remove-members', **kwargs),
+            'reset_qr': reverse('event-reset-qr', **kwargs),
         }
+
+    def create(self, validated_data):
+        event = super().create(validated_data)
+        event.create_qr_code(self.context['request'])
+        return event
 
 
 class _EventMembersSerializer(serializers.Serializer):
@@ -139,3 +148,11 @@ class RemoveMembersSerializer(_EventMembersSerializer):
         ):
             raise serializers.ValidationError(_('Cannot remove creator of event.'))
         return pks
+
+
+class JoinWithQRCodeSerializer(serializers.Serializer):
+    token = serializers.CharField()
+
+
+class ResetQRCodeSerializer(serializers.Serializer):
+    """This serializer is intentionally left blank."""
