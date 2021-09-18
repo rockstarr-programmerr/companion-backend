@@ -63,6 +63,33 @@ Go to this URL in your brower. (You may need to register new user and then login
 http://localhost:8000/
 ```
 
+### Setup background tasks
+**NOTE** This is only needed if you develop features involving background tasks, like sending email, .etc
+
+#### Rabbitmq
+##### Setup with docker
+```
+docker run -d --name rabbitmq -p 5672:5672 rabbitmq
+```
+
+##### Create user and vhost
+Exec into container
+```
+docker exec -it rabbitmq bash
+```
+
+Create user, vhost
+```
+rabbitmqctl add_user companion_user companion_password
+rabbitmqctl add_vhost companion_vhost
+rabbitmqctl set_permissions -p companion_vhost companion_user ".*" ".*" ".*"
+```
+
+##### Start the worker process
+```
+celery -A companion worker -l INFO
+```
+
 ### Test
 #### Run unittests
 ```

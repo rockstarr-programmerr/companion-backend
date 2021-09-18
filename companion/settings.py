@@ -33,6 +33,7 @@ env = environ.Env(
         'http://localhost:8000',
         'http://127.0.0.1:8000',
     ]),
+
     EMAIL_HOST=(str, ''),
     EMAIL_PORT=(str, ''),
     EMAIL_USE_SSL=(bool, True),
@@ -40,6 +41,7 @@ env = environ.Env(
     EMAIL_HOST_USER=(str, ''),
     EMAIL_HOST_PASSWORD=(str, ''),
     DEFAULT_FROM_EMAIL=(str, ''),
+
     SOCIALACCOUNT_APP_USE_ENV=(bool, True),
     SOCIALACCOUNT_GOOGLE_CLIENT_ID=(str, ''),
     SOCIALACCOUNT_GOOGLE_SECRET=(str, ''),
@@ -47,6 +49,8 @@ env = environ.Env(
     SOCIALACCOUNT_FACEBOOK_CLIENT_ID=(str, ''),
     SOCIALACCOUNT_FACEBOOK_SECRET=(str, ''),
     SOCIALACCOUNT_FACEBOOK_KEY=(str, ''),
+
+    CELERY_BROKER_URL=(str, 'amqp://companion_user:companion_password@localhost:5672/companion_vhost'),
 )
 # reading .env file
 env_file = str(BASE_DIR / '.env')
