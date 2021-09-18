@@ -75,6 +75,16 @@ class UserSearchSerializer(serializers.ModelSerializer):
             repr_['avatar_thumbnail'] = instance.social_avatar_url or None
         return repr_
 
+class MyInfoSerializer(UserSerializer):
+    event_invitations_url = serializers.SerializerMethodField()
+
+    class Meta(UserSerializer.Meta):
+        fields = USER_SERIALIZER_FIELDS + ['event_invitations_url']
+
+    def get_event_invitations_url(self, user):
+        request = self.context['request']
+        return reverse('user-my-event-invitation-list', request=request)
+
 
 class ChangePasswordSerializer(serializers.Serializer):
     current_password = serializers.CharField(write_only=True)
@@ -92,12 +102,8 @@ class EmailResetPasswordLinkSerializer(serializers.Serializer):
             )
         return link
 
-class MyInfoSerializer(UserSerializer):
-    event_invitations_url = serializers.SerializerMethodField()
 
-    class Meta(UserSerializer.Meta):
-        fields = USER_SERIALIZER_FIELDS + ['event_invitations_url']
-
-    def get_event_invitations_url(self, user):
-        request = self.context['request']
-        return reverse('user-my-event-invitation-list', request=request)
+class ResetPasswordSerializer(serializers.Serializer):
+    uid = serializers.CharField()
+    token = serializers.CharField()
+    password = serializers.CharField(write_only=True, validators=[validate_password])

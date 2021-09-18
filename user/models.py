@@ -85,7 +85,3 @@ class User(AbstractUser):
             with Image.open(image.path) as f:
                 f.thumbnail((width, height))
                 f.save(image.path)
-
-    @classmethod
-    def get_user_by_email(cls, email):
-        return cls.objects.filter(email=email).first()

@@ -4,21 +4,21 @@ from django.utils.translation import gettext as _
 from django.views.decorators.debug import sensitive_post_parameters
 from rest_framework import mixins, status
 from rest_framework.decorators import action
-from rest_framework.exceptions import PermissionDenied
+from rest_framework.exceptions import NotFound, PermissionDenied
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.reverse import reverse_lazy
 from rest_framework.viewsets import GenericViewSet
 
 from companion.utils.api import extra_action_urls
-from user.business import reset_password
+from user.business.reset_password import ResetPasswordBusiness, ResetPasswordTokenInvalid
 from user.filters import UserFilter, UserSearchFilter
 from user.pagination import UserSearchPagination
 from user.permissions import IsSelfOrReadOnly
 from user.serializers.user import (ChangePasswordSerializer,
                                    EmailResetPasswordLinkSerializer,
-                                   RegisterSerializer, UserSearchSerializer,
-                                   UserSerializer)
+                                   RegisterSerializer, ResetPasswordSerializer,
+                                   UserSearchSerializer, UserSerializer)
 
 User = get_user_model()
 
@@ -119,8 +119,39 @@ class UserViewSet(mixins.RetrieveModelMixin,
         deeplink = serializer.validated_data['deeplink']
         email = serializer.validated_data['email']
 
-        user = User.get_user_by_email(email)
+        user = ResetPasswordBusiness.get_user_by_email(email)
         if user:
-            reset_password.send_email(user, deeplink)
+            business = ResetPasswordBusiness(user)
+            business.send_email(deeplink)
+
+        return Response()
+
+    @action(
+        detail=False, methods=['POST'],
+        url_path='reset-password',
+        serializer_class=ResetPasswordSerializer,
+        permission_classes=[AllowAny],
+    )
+    def reset_password(self, request):
+        """
+        Reset user's password.
+        Return 403 if `token` is not valid.
+        Return 404 if `uid` is not valid.
+        """
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        uid = serializer.validated_data['uid']
+        token = serializer.validated_data['token']
+        password = serializer.validated_data['password']
+
+        user = ResetPasswordBusiness.get_user_by_uid(uid)
+        if user:
+            business = ResetPasswordBusiness(user)
+            try:
+                business.reset_password(password, token)
+            except ResetPasswordTokenInvalid:
+                raise PermissionDenied(_('Reset password token invalid.'))
+        else:
+            raise NotFound(_('Cannot find user with the given `uid`.'))
 
         return Response()
