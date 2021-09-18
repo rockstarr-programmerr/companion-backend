@@ -55,7 +55,9 @@ class Event(TimeStamp):
         random_img_name = uuid.uuid4().hex
         img_name = f'{random_img_name}.png'
         filename = self.qr_code.field.generate_filename(self, img_name)
+
         path = settings.MEDIA_ROOT / filename
+        path.parent.mkdir(parents=True, exist_ok=True)
         qr_code.save(path)
 
         self.qr_code = filename

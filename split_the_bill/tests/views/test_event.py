@@ -1,16 +1,19 @@
 import json
 import random
+from datetime import timedelta
 
 from django.contrib.auth import get_user_model
+from django.utils import timezone
 from faker import Faker
 from freezegun import freeze_time
 from model_bakery import baker
 from parameterized import parameterized
 from rest_framework.reverse import reverse
-from rest_framework.test import APITestCase
+from rest_framework.test import APIRequestFactory
 
-from split_the_bill.models import Event, EventInvitation
 from companion.utils.datetime import format_iso
+from companion.utils.testing import MediaTestCase
+from split_the_bill.models import Event, EventInvitation
 from split_the_bill.utils.url import update_url_params
 from split_the_bill.views import EventViewSet
 
@@ -18,24 +21,27 @@ fake = Faker()
 User = get_user_model()
 
 URL = '/split-the-bill/events/'
-EVENT1_CREATE_TIME = '2021-08-21T08:13:16.276029Z'
-EVENT2_CREATE_TIME = '2021-08-22T08:13:16.276029Z'
-DEFAULT_TIME = '2021-08-23T08:13:16.276029Z'
+EVENT1_CREATE_TIME = timezone.now().replace(day=15)
+EVENT2_CREATE_TIME = EVENT1_CREATE_TIME + timedelta(days=1)
+DEFAULT_TIME = EVENT2_CREATE_TIME + timedelta(days=1)
 
 
-class _EventViewSetTestCase(APITestCase):
+class _EventViewSetTestCase(MediaTestCase):
     def setUp(self):
         super().setUp()
         self.creator = baker.make(User)
         self.members = baker.make(User, _quantity=4)
+        dummy_request = APIRequestFactory().get('')
 
         with freeze_time(EVENT1_CREATE_TIME):
             self.event1 = baker.make(Event, creator=self.creator)
             self.event1.members.add(self.creator, *self.members[:2])
+            self.event1.create_qr_code(dummy_request)
 
         with freeze_time(EVENT2_CREATE_TIME):
             self.event2 = baker.make(Event, creator=self.creator)
             self.event2.members.add(self.creator, *self.members[2:])
+            self.event2.create_qr_code(dummy_request)
 
     def get_event1_json(self, request):
         return self.get_event_json(self.event1, request)
@@ -57,6 +63,7 @@ class _EventViewSetTestCase(APITestCase):
             'pk': event.pk,
             'name': event.name,
             'creator': self.get_user_json(event.creator, request=request),
+            'qr_code': f'http://testserver{event.qr_code.url}',
             'members': [
                 self.get_user_json(member, request=request)
                 for member in members
@@ -68,6 +75,7 @@ class _EventViewSetTestCase(APITestCase):
                 'invite_members': reverse('event-invite-members', kwargs={'pk': event.pk}, request=request),
                 'cancel_invite_members': reverse('event-cancel-invite-members', kwargs={'pk': event.pk}, request=request),
                 'remove_members': reverse('event-remove-members', kwargs={'pk': event.pk}, request=request),
+                'reset_qr': reverse('event-reset-qr', kwargs={'pk': event.pk}, request=request),
             },
         }
 
@@ -90,7 +98,7 @@ class _EventViewSetTestCase(APITestCase):
         }
 
     @staticmethod
-    def get_pagination_json(results, count=None, next=None, previous=None):
+    def get_pagination_json(results, request, count=None, next=None, previous=None):
         if count is None:
             count = len(results)
 
@@ -99,6 +107,9 @@ class _EventViewSetTestCase(APITestCase):
             'next': next,
             'previous': previous,
             'results': results,
+            'extra_action_urls': {
+                'join_with_qr': reverse('event-join-with-qr', request=request)
+            }
         }
 
     def get_invite_members_url(self, pk):
@@ -122,7 +133,7 @@ class EventReadTestCase(_EventViewSetTestCase):
             self.get_event2_json(res.wsgi_request),
             self.get_event1_json(res.wsgi_request),
         ]
-        expected = json.dumps(self.get_pagination_json(results))
+        expected = json.dumps(self.get_pagination_json(results, res.wsgi_request))
 
         self.assertJSONEqual(expected, actual)
 
