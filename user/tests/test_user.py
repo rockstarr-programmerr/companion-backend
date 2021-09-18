@@ -75,6 +75,7 @@ class _UserTestCase(APITestCase):
                 'change_password': reverse('user-change-password', request=request),
                 'email_reset_password_link': reverse('user-email-reset-password-link', request=request),
                 'register': reverse('user-register', request=request),
+                'reset_password': reverse('user-reset-password', request=request),
                 'search': reverse('user-search', request=request),
                 'my_info': reverse('user-my-info', request=request),
             }

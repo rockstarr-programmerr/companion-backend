@@ -27,11 +27,9 @@ class ResetPasswordBusiness:
         send_mail('Hello!', message, None, [self.user.email])
 
     def reset_password(self, password, token):
-        if self.check_token(token):
-            self.user.set_password(password)
-            self.user.save()
-        else:
-            raise ResetPasswordTokenInvalid
+        self.check_token(token)
+        self.user.set_password(password)
+        self.user.save()
 
     def get_link(self, deeplink):
         token = self.token_generator.make_token(self.user)
@@ -40,7 +38,9 @@ class ResetPasswordBusiness:
         return url
 
     def check_token(self, token):
-        return self.token_generator.check_token(self.user, token)
+        is_valid = self.token_generator.check_token(self.user, token)
+        if not is_valid:
+            raise ResetPasswordTokenInvalid
 
     @staticmethod
     def get_user_by_email(email):

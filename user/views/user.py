@@ -11,7 +11,8 @@ from rest_framework.reverse import reverse_lazy
 from rest_framework.viewsets import GenericViewSet
 
 from companion.utils.api import extra_action_urls
-from user.business.reset_password import ResetPasswordBusiness, ResetPasswordTokenInvalid
+from user.business.reset_password import (ResetPasswordBusiness,
+                                          ResetPasswordTokenInvalid)
 from user.filters import UserFilter, UserSearchFilter
 from user.pagination import UserSearchPagination
 from user.permissions import IsSelfOrReadOnly
@@ -104,7 +105,7 @@ class UserViewSet(mixins.RetrieveModelMixin,
 
         user.set_password(new_password)
         user.save()
-        login(request, user)
+        login(request, user, backend='django.contrib.auth.backends.ModelBackend')
         return Response()
 
     @action(
