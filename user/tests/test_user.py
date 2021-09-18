@@ -12,7 +12,7 @@ from rest_framework.test import APITestCase
 
 from companion.utils.testing import MediaTestCase
 from split_the_bill.models import Event, EventInvitation
-from split_the_bill.utils.datetime import format_iso
+from companion.utils.datetime import format_iso
 from user.views import UserEventInvitationViewSet
 
 User = get_user_model()
@@ -72,9 +72,11 @@ class _UserTestCase(APITestCase):
 
         if extra_actions:
             response['extra_action_urls'] = {
-                'my_info': reverse('user-my-info', request=request),
+                'change_password': reverse('user-change-password', request=request),
+                'email_reset_password_link': reverse('user-email-reset-password-link', request=request),
                 'register': reverse('user-register', request=request),
                 'search': reverse('user-search', request=request),
+                'my_info': reverse('user-my-info', request=request),
             }
 
         return response
