@@ -3,26 +3,47 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from django.utils.translation import gettext as _
 from rest_framework import serializers
-
-from user.models import USERNAME_MIN_LENGTH
+from rest_framework.reverse import reverse
 
 User = get_user_model()
 
 
+USER_SERIALIZER_FIELDS = ['url', 'pk', 'nickname', 'email', 'avatar', 'avatar_thumbnail']
+
 class UserSerializer(serializers.HyperlinkedModelSerializer):
     class Meta:
         model = User
-        fields = ['url', 'pk', 'username', 'email', 'avatar']
+        fields = USER_SERIALIZER_FIELDS
         extra_kwargs = {
             'url': {'read_only': True},
             'pk': {'read_only': True},
+            'avatar': {'allow_null': True},
+            'avatar_thumbnail': {'read_only': True},
         }
+
+    def validate(self, attrs):
+        attrs = super().validate(attrs)
+        if 'avatar' in attrs:
+            attrs['avatar_thumbnail'] = attrs['avatar']
+        return attrs
+
+    def to_representation(self, instance):
+        repr_ = super().to_representation(instance)
+        if not repr_['avatar']:
+            repr_['avatar'] = instance.social_avatar_url or None
+            repr_['avatar_thumbnail'] = instance.social_avatar_url or None
+        return repr_
+
+    def save(self, **kwargs):
+        if 'avatar' in self.validated_data and self.validated_data['avatar'] is None:
+            kwargs['social_avatar_url'] = ''
+        return super().save(**kwargs)
 
 
 class RegisterSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ['username', 'email', 'password']
+        fields = ['email', 'password']
         extra_kwargs = {
             'password': {
                 'write_only': True,
@@ -38,15 +59,21 @@ class RegisterSerializer(serializers.ModelSerializer):
         return email
 
 
-class UserSearchSerializer(serializers.HyperlinkedModelSerializer):
+class UserSearchSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ['username']
+        fields = ['nickname', 'email', 'avatar_thumbnail']
         extra_kwargs = {
-            'username': {
-                'min_length': USERNAME_MIN_LENGTH,
-            }
+            'nickname': {'read_only': True},
+            'email': {'read_only': True},
+            'avatar_thumbnail': {'read_only': True},
         }
+
+    def to_representation(self, instance):
+        repr_ = super().to_representation(instance)
+        if not repr_['avatar_thumbnail']:
+            repr_['avatar_thumbnail'] = instance.social_avatar_url or None
+        return repr_
 
 
 class ChangePasswordSerializer(serializers.Serializer):
@@ -64,3 +91,13 @@ class EmailResetPasswordLinkSerializer(serializers.Serializer):
                 _('This deeplink is not allowed.')
             )
         return link
+
+class MyInfoSerializer(UserSerializer):
+    event_invitations_url = serializers.SerializerMethodField()
+
+    class Meta(UserSerializer.Meta):
+        fields = USER_SERIALIZER_FIELDS + ['event_invitations_url']
+
+    def get_event_invitations_url(self, user):
+        request = self.context['request']
+        return reverse('user-my-event-invitation-list', request=request)

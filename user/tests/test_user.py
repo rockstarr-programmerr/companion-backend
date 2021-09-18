@@ -1,14 +1,19 @@
 import json
 import random
+from pathlib import Path
 
-from django.contrib.auth import get_user_model, authenticate
+from django.conf import settings
+from django.contrib.auth import authenticate, get_user_model
 from faker import Faker
 from model_bakery import baker
 from parameterized import parameterized
 from rest_framework.reverse import reverse
 from rest_framework.test import APITestCase
 
-from split_the_bill.models import Event
+from companion.utils.testing import MediaTestCase
+from split_the_bill.models import Event, EventInvitation
+from split_the_bill.utils.datetime import format_iso
+from user.views import UserEventInvitationViewSet
 
 User = get_user_model()
 fake = Faker()
@@ -47,9 +52,10 @@ class _UserTestCase(APITestCase):
         return {
             'url': reverse('user-detail', kwargs={'pk': user.pk}, request=request),
             'pk': user.pk,
-            'username': user.username,
+            'nickname': user.nickname,
             'email': user.email,
             'avatar': user.avatar.path if user.avatar else None,
+            'avatar_thumbnail': user.avatar_thumbnail.path if user.avatar_thumbnail else None,
         }
 
     @staticmethod
@@ -90,11 +96,11 @@ class UserReadTestCase(_UserTestCase):
             user = random.choice(self.share_members)
             users = list(self.event1.members.all()) + list(self.event2.members.all())
             users = list(set(users))  # Make unique
-            users.sort(key=lambda user: user.username)
+            users.sort(key=lambda user: user.nickname)
         else:
             event = getattr(self, f'event{event_number}')
             user = random.choice(getattr(self, f'members{event_number}'))
-            users = event.members.all().order_by('username')
+            users = event.members.all().order_by('nickname')
 
         self.client.force_authenticate(user=user)
         res = self.client.get(self.url)
@@ -169,7 +175,7 @@ class UserReadTestCase(_UserTestCase):
         self.assertEqual(res.status_code, 200)
 
 
-class UserUpdateTestCase(_UserTestCase):
+class UserUpdateTestCase(MediaTestCase, _UserTestCase):
     @parameterized.expand([
         ['put'],
         ['patch'],
@@ -180,10 +186,10 @@ class UserUpdateTestCase(_UserTestCase):
         url = self.get_detail_url(user.pk)
         req_method = getattr(self.client, method)
 
-        new_username = fake.text(max_nb_chars=10)
+        new_nickname = fake.text(max_nb_chars=10)
         new_email = fake.email()
         data = {
-            'username': new_username,
+            'nickname': new_nickname,
             'email': new_email,
         }
         res = req_method(url, data)
@@ -191,7 +197,7 @@ class UserUpdateTestCase(_UserTestCase):
 
         # Test DB
         user.refresh_from_db()
-        self.assertEqual(user.username, new_username)
+        self.assertEqual(user.nickname, new_nickname)
         self.assertEqual(user.email, new_email)
 
         # Test Response
@@ -200,6 +206,62 @@ class UserUpdateTestCase(_UserTestCase):
             self.get_user_json(user, request=res.wsgi_request)
         )
         self.assertJSONEqual(expected, actual)
+
+    def test__update_avatar(self):
+        user = baker.make(User)
+        self.client.force_authenticate(user=user)
+        url = self.get_detail_url(user.pk)
+
+        avatar_path = Path(__file__).parent / 'assets' / 'avatar.jpg'
+        with open(avatar_path, 'rb') as avatar:
+            data = {'avatar': avatar}
+            res = self.client.patch(url, data, format='multipart')
+
+        results = res.json()
+
+        # Check if resizing works
+        user.refresh_from_db()
+        self.assertLessEqual(user.avatar.width, 256)
+        self.assertLessEqual(user.avatar.height, 256)
+        self.assertLessEqual(user.avatar_thumbnail.width, 64)
+        self.assertLessEqual(user.avatar_thumbnail.height, 64)
+
+        # Check if path returned to client is correct
+        avatar_path = Path(user.avatar.path).relative_to(settings.MEDIA_ROOT)
+        avatar_path = str(avatar_path).replace('\\', '/')
+        avatar_url = 'http://testserver' + settings.MEDIA_URL + avatar_path
+        self.assertEqual(avatar_url, results['avatar'])
+
+        avatar_thumbnail_path = Path(user.avatar_thumbnail.path).relative_to(settings.MEDIA_ROOT)
+        avatar_thumbnail_path = str(avatar_thumbnail_path).replace('\\', '/')
+        avatar_thumbnail_url = 'http://testserver' + settings.MEDIA_URL + avatar_thumbnail_path
+        self.assertEqual(avatar_thumbnail_url, results['avatar_thumbnail'])
+
+    def test__remove_avatar(self):
+        user = baker.make(User)
+        self.client.force_authenticate(user=user)
+        url = self.get_detail_url(user.pk)
+
+        avatar_path = Path(__file__).parent / 'assets' / 'avatar.jpg'
+        with open(avatar_path, 'rb') as avatar:
+            data = {'avatar': avatar}
+            res = self.client.patch(url, data, format='multipart')
+
+        user.refresh_from_db()
+        self.assertIsNotNone(user.avatar)
+        self.assertIsNotNone(user.avatar_thumbnail)
+        self.assertIsNotNone(res.json()['avatar'])
+        self.assertIsNotNone(res.json()['avatar_thumbnail'])
+
+        data = {'avatar': None}
+        res = self.client.patch(url, data)
+
+        user.refresh_from_db()
+        with self.assertRaises(ValueError):
+            user.avatar.path
+            user.avatar_thumbnail.path
+        self.assertIsNone(res.json()['avatar'])
+        self.assertIsNone(res.json()['avatar_thumbnail'])
 
     @parameterized.expand([
         ['put'],
@@ -229,10 +291,10 @@ class UserUpdateTestCase(_UserTestCase):
         res = self.client.get(url)
         self.assertEqual(res.status_code, 200)
 
-        new_username = fake.text(max_nb_chars=10)
+        new_nickname = fake.text(max_nb_chars=10)
         new_email = fake.email()
         data = {
-            'username': new_username,
+            'nickname': new_nickname,
             'email': new_email,
         }
         res = self.client.put(url, data)
@@ -268,28 +330,26 @@ class UserRegisterTestCase(APITestCase):
     def test__register_user(self):
         self.client.force_authenticate(user=None)
 
-        username = fake.text(max_nb_chars=150)
         email = fake.email()
         password = fake.password()
 
-        res = self.client.post(self.url, {'username': username, 'email': email, 'password': password})
+        res = self.client.post(self.url, {'email': email, 'password': password})
         self.assertEqual(res.status_code, 201)
 
         # Check response
         actual = res.json()
         expected = json.dumps({
-            'username': username,
             'email': email,
         })
         self. assertJSONEqual(expected, actual)
 
         # Check DB
-        user = User.objects.filter(username=username).first()
+        user = User.objects.filter(email=email).first()
         self.assertIsNotNone(user)
-        self.assertEqual(user.email, email)
+        self.assertEqual(user.nickname, email.split('@')[0])
 
         # Check if this user can now be authenticate with that password
-        res = self.client.post(self.login_url, {'username': username, 'password': password})
+        res = self.client.post(self.login_url, {'email': email, 'password': password})
         data = res.json()
         access_token = data.get('access')
         self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {access_token}')
@@ -298,9 +358,16 @@ class UserRegisterTestCase(APITestCase):
         self.assertEqual(res.status_code, 200)
 
 
-class UserMyInfoTestCase(_UserTestCase):
+class UserMyInfoTestCase(MediaTestCase, _UserTestCase):
     url = reverse('user-list')
     my_info_url = reverse('user-my-info')
+
+    def get_user_json(self, pk, request=None):
+        user_json = super().get_user_json(pk, request=request)
+        user_json.update({
+            'event_invitations_url': reverse('user-my-event-invitation-list', request=request)
+        })
+        return user_json
 
     def setUp(self):
         super().setUp(create_data=False)
@@ -323,16 +390,16 @@ class UserMyInfoTestCase(_UserTestCase):
         ['patch'],
     ])
     def test__update_my_info(self, method):
-        username = fake.text(max_nb_chars=150)
+        nickname = fake.text(max_nb_chars=150)
         email = fake.email()
 
         req_method = getattr(self.client, method)
-        res = req_method(self.my_info_url, {'username': username, 'email': email})
+        res = req_method(self.my_info_url, {'nickname': nickname, 'email': email})
         self.assertEqual(res.status_code, 200)
 
         # Check DB
         self.user.refresh_from_db()
-        self.assertEqual(self.user.username, username)
+        self.assertEqual(self.user.nickname, nickname)
         self.assertEqual(self.user.email, email)
 
         # Check response
@@ -363,43 +430,94 @@ class UserMyInfoTestCase(_UserTestCase):
         res = req_method(self.my_info_url)
         self.assertEqual(res.status_code, 405)
 
+    def test__bug__cannot_patch(self):
+        self.client.force_authenticate(user=self.user)
+        email = fake.email()
+        data = {'email': email}
+        res = self.client.patch(self.my_info_url, data)
+        self.assertEqual(res.status_code, 200)
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.email, email)
+
+    def test__remove_avatar(self):
+        """
+        If you has both `avatar` and `social_avatar_url`,
+        then when they remove `avatar`, `social_avatar_url` will also be remove
+        """
+        self.client.force_authenticate(user=self.user)
+        url = self.my_info_url
+
+        avatar_path = Path(__file__).parent / 'assets' / 'avatar.jpg'
+        with open(avatar_path, 'rb') as avatar:
+            data = {'avatar': avatar}
+            self.client.patch(url, data, format='multipart')
+
+        social_avatar_url = fake.url()
+        self.user.social_avatar_url = social_avatar_url
+        self.user.save()
+
+        self.client.patch(url, {'avatar': None})
+        self.user.refresh_from_db()
+        with self.assertRaises(ValueError):
+            self.user.avatar.path
+            self.user.avatar_thumbnail.path
+        self.assertEqual(self.user.avatar_thumbnail, '')
+        self.assertEqual(self.user.social_avatar_url, '')
+
 
 class UserSearchTestCase(_UserTestCase):
     url = reverse('user-search')
 
     def setUp(self):
         super().setUp(create_data=False)
-        baker.make(User, username='Carl Johnson')
-        baker.make(User, username='BigSmoke')
-        baker.make(User, username='Sweet')
-        baker.make(User, username='Ryder')
-        baker.make(User, username='Brian')
-        baker.make(User, username='BigBear')
-        baker.make(User, username='LittleBear')
+        baker.make(User, nickname='Carl Johnson', email='johnson@grove.street')
+        baker.make(User, nickname='BigSmoke', email='bigsmoke@grove.street')
+        baker.make(User, nickname='Sweet', email='king@grove.street')
+        baker.make(User, nickname='Ryder', email='ryder@grove.street')
+        baker.make(User, nickname='Brian', email='brian@sweet.street')
+        baker.make(User, nickname='BigBear', email='bigbear@grove.street')
+        baker.make(User, nickname='LittleBear', email='littlebear@grove.street')
 
     @parameterized.expand([
-        ['big', ['BigSmoke', 'BigBear']],
-        ['bear', ['BigBear', 'LittleBear']],
-        ['arl', ['Carl Johnson']],
+        ['big', ['bigsmoke@grove.street', 'bigbear@grove.street']],
+        ['bear', ['bigbear@grove.street', 'littlebear@grove.street']],
+        ['arl', ['johnson@grove.street']],
         ['The Truth', []],
+        ['king', ['king@grove.street']],
+        ['sweet', ['king@grove.street', 'brian@sweet.street']],
     ])
-    def test__search(self, query, expected_usernames):
-        user = User.objects.first()
+    def test__search(self, query, expected_emails):
+        user = baker.make(User)
         self.client.force_authenticate(user=user)
-        data = {'username__icontains': query}
+        data = {'nickname_or_email__icontains': query}
         res = self.client.get(self.url, data)
         self.assertEqual(res.status_code, 200)
 
-        expected_usernames.sort()
+        users = User.objects.filter(email__in=expected_emails).order_by('nickname')
         actual = res.json()
         expected = json.dumps(self.get_pagination_json([
-            {'username': username}
-            for username in expected_usernames
+            {
+                'nickname': user.nickname,
+                'email': user.email,
+                'avatar_thumbnail': None,
+            }
+            for user in users
         ], extra_actions=False))
         self.assertJSONEqual(expected, actual)
 
+    def test__search__dont_find_yourself(self):
+        user = baker.make(User)
+        self.client.force_authenticate(user=user)
+        data = {'nickname_or_email__icontains': user.nickname}
+        res = self.client.get(self.url, data)
+        self.assertEqual(res.status_code, 200)
+
+        actual = res.json()
+        expected = json.dumps(self.get_pagination_json([], extra_actions=False))
+        self.assertJSONEqual(expected, actual)
+
     def test__search_permission(self):
-        data = {'username__icontains': 'something'}
+        data = {'nickname_or_email__icontains': 'something'}
 
         # Unauthenticated user cannot access
         self.client.force_authenticate(user=None)
@@ -409,15 +527,15 @@ class UserSearchTestCase(_UserTestCase):
     def test__validation(self):
         user = User.objects.first()
         self.client.force_authenticate(user=user)
-        data = {'username__icontains': 'ab'}
+        data = {'nickname_or_email__icontains': ''}
         res = self.client.get(self.url, data)
         self.assertEqual(res.status_code, 400)
-        self.assertDictEqual(res.json(), {'username__icontains': ['Ensure this value has at least 3 characters (it has 2).']})
+        self.assertDictEqual(res.json(), {'nickname_or_email__icontains': ['This field is required.']})
 
 
 class UserChangePasswordTestCase(_UserTestCase):
     url = reverse('user-change-password')
-    username = 'BigSmoke'
+    email = 'bigsmoke@grove.street'
     old_pwd = 'alargesoda'
     new_pwd = 'twonumbernines'
 
@@ -426,11 +544,11 @@ class UserChangePasswordTestCase(_UserTestCase):
 
         # Register user
         register_url = reverse('user-register')
-        data = {'username': self.username, 'password': self.old_pwd}
+        data = {'email': self.email, 'password': self.old_pwd}
         res = self.client.post(register_url, data)
 
         # Test authenticate
-        self.user = authenticate(res.wsgi_request, username=self.username, password=self.old_pwd)
+        self.user = authenticate(res.wsgi_request, email=self.email, password=self.old_pwd)
         self.assertIsNotNone(self.user)
 
         self.client.force_authenticate(user=self.user)
@@ -442,9 +560,9 @@ class UserChangePasswordTestCase(_UserTestCase):
         self.assertEqual(res.status_code, 200)
 
         # Test authenticate with new password
-        user = authenticate(res.wsgi_request, username=self.username, password=self.old_pwd)
+        user = authenticate(res.wsgi_request, email=self.email, password=self.old_pwd)
         self.assertIsNone(user)
-        user = authenticate(res.wsgi_request, username=self.username, password=self.new_pwd)
+        user = authenticate(res.wsgi_request, email=self.email, password=self.new_pwd)
         self.assertIsNotNone(user)
 
     def test__wrong_current_password(self):
@@ -477,3 +595,138 @@ class UserChangePasswordTestCase(_UserTestCase):
         if expected_new_password_errs:
             errs = result['new_password']
             self.assertListEqual(errs, expected_new_password_errs)
+
+
+class UserMyEventInvitationTestCase(_UserTestCase):
+    def setUp(self):
+        super().setUp()
+        self.user = baker.make(User)
+        self.event1.invited_users.add(self.user)
+        self.event2.invited_users.add(self.user)
+        self.client.force_authenticate(user=self.user)
+
+    def get_invitation_json(self, invitation, request=None):
+        return {
+            'url': reverse('user-my-event-invitation-detail', kwargs={'pk': invitation.pk}, request=request),
+            'pk': invitation.pk,
+            'event': {
+                'name': invitation.event.name,
+                'creator': {
+                    'nickname': invitation.event.creator.nickname,
+                    'email': invitation.event.creator.email,
+                    'avatar': invitation.event.creator.avatar.url if invitation.event.creator.avatar else None,
+                    'avatar_thumbnail': invitation.event.creator.avatar_thumbnail.url if invitation.event.creator.avatar_thumbnail else None,
+                }
+            },
+            'status': invitation.status,
+            'create_time': format_iso(invitation.create_time),
+            'update_time': format_iso(invitation.update_time),
+            'accept_invitation_url': reverse('user-my-event-invitation-accept', kwargs={'pk': invitation.pk}, request=request),
+            'decline_invitation_url': reverse('user-my-event-invitation-decline', kwargs={'pk': invitation.pk}, request=request)
+        }
+
+    def test__list_my_event_invitations(self):
+        url = reverse('user-my-event-invitation-list')
+        res = self.client.get(url)
+        self.assertEqual(res.status_code, 200)
+
+        invitations = EventInvitation.objects.filter(user=self.user).order_by('-create_time')
+        results = [
+            self.get_invitation_json(invitation, request=res.wsgi_request)
+            for invitation in invitations
+        ]
+        expected = json.dumps(
+            self.get_pagination_json(results, extra_actions=False),
+        )
+        actual = res.json()
+
+        self.assertJSONEqual(expected, actual)
+
+    def test__retrieve_my_event_invitation(self):
+        invitation = EventInvitation.objects.filter(user=self.user).first()
+        url = reverse('user-my-event-invitation-detail', kwargs={'pk': invitation.pk})
+        res = self.client.get(url)
+        self.assertEqual(res.status_code, 200)
+
+        actual = res.json()
+        expected = json.dumps(
+            self.get_invitation_json(invitation, request=res.wsgi_request)
+        )
+
+        self.assertJSONEqual(expected, actual)
+
+    def test__accept_invitation(self):
+        invitation = EventInvitation.objects.filter(user=self.user, event=self.event1).first()
+        self.assertEqual(invitation.status, 'pending')
+        self.assertNotIn(self.user, self.event1.members.all())
+
+        url = reverse('user-my-event-invitation-accept', kwargs={'pk': invitation.pk})
+        res = self.client.post(url)
+        self.assertEqual(res.status_code, 200)
+
+        invitation.refresh_from_db()
+        self.assertEqual(invitation.status, 'accepted')
+        self.assertIn(self.user, self.event1.members.all())
+
+    def test__decline_invitation(self):
+        invitation = EventInvitation.objects.filter(user=self.user, event=self.event2).first()
+        self.assertEqual(invitation.status, 'pending')
+        self.assertNotIn(self.user, self.event2.members.all())
+
+        url = reverse('user-my-event-invitation-decline', kwargs={'pk': invitation.pk})
+        res = self.client.post(url)
+        self.assertEqual(res.status_code, 200)
+
+        invitation.refresh_from_db()
+        self.assertEqual(invitation.status, 'declined')
+        self.assertNotIn(self.user, self.event2.members.all())
+
+    def test__filter_and_ordering(self):
+        self.assertListEqual(UserEventInvitationViewSet.ordering_fields, ['create_time', 'update_time', 'event__name', 'status'])
+        self.assertListEqual(UserEventInvitationViewSet.ordering, ['-create_time'])
+
+    def test__get_list_permission(self):
+        url = reverse('user-my-event-invitation-list')
+
+        # Unauthenticated user cannot access
+        self.client.force_authenticate(user=None)
+        res = self.client.get(url)
+        self.assertEqual(res.status_code, 401)
+
+        # Cannot see other's invitations
+        other_user = baker.make(User)
+        self.event1.invited_users.add(other_user)
+        invitation_pks = EventInvitation.objects.filter(user=other_user).values_list('pk', flat=True)
+
+        self.client.force_authenticate(user=self.user)
+        res = self.client.get(url)
+        pks = [data['pk'] for data in res.json()['results']]
+
+        for pk in invitation_pks:
+            self.assertNotIn(pk, pks)
+
+    @parameterized.expand([
+        ['detail', 'get'],
+        ['accept', 'post'],
+        ['decline', 'post'],
+    ])
+    def test__get_detail__and__accept_decline__permission(self, action, method):
+        invitation = EventInvitation.objects.filter(user=self.user).first()
+        url = reverse(f'user-my-event-invitation-{action}', kwargs={'pk': invitation.pk})
+        req_method = getattr(self.client, method)
+
+        # Unauthenticated user cannot access
+        self.client.force_authenticate(user=None)
+        res = req_method(url)
+        self.assertEqual(res.status_code, 401)
+
+        # Other user cannot see
+        other_user = baker.make(User)
+        self.client.force_authenticate(user=other_user)
+        res = req_method(url)
+        self.assertEqual(res.status_code, 404)
+
+        # Correct user can see
+        self.client.force_authenticate(user=self.user)
+        res = req_method(url)
+        self.assertEqual(res.status_code, 200)
