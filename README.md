@@ -87,7 +87,7 @@ rabbitmqctl set_permissions -p companion_vhost companion_user ".*" ".*" ".*"
 
 ##### Start the worker process
 ```
-celery -A companion worker -l INFO
+celery --app companion worker --loglevel INFO --pool solo
 ```
 
 ### Test

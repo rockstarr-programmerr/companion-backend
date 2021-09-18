@@ -303,6 +303,8 @@ if env('SOCIALACCOUNT_APP_USE_ENV'):
         'key': env('SOCIALACCOUNT_FACEBOOK_KEY'),
     }
 
+CELERY_BROKER_URL = env('CELERY_BROKER_URL')
+
 IS_TESTING = 'test' in sys.argv
 
 if IS_TESTING:
