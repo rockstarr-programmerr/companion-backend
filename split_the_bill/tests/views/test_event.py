@@ -14,7 +14,7 @@ from rest_framework.test import APIRequestFactory
 from companion.utils.datetime import format_iso
 from companion.utils.testing import MediaTestCase
 from split_the_bill.models import Event, EventInvitation
-from split_the_bill.utils.url import update_url_params
+from companion.utils.url import update_url_params
 from split_the_bill.views import EventViewSet
 
 fake = Faker()

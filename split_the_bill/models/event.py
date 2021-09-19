@@ -8,7 +8,7 @@ from django.db import models
 from rest_framework.generics import get_object_or_404
 from rest_framework.reverse import reverse
 
-from split_the_bill.utils.url import update_url_params
+from companion.utils.url import update_url_params
 
 from ._common import TimeStamp
 from .event_invitation import EventInvitation

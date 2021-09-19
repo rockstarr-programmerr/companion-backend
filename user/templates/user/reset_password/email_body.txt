@@ -1,0 +1,24 @@
+{% load i18n %}
+{% autoescape off %}
+
+{% translate 'Hi there' %} :)
+
+{% blocktranslate %}
+You're receiving this email because you requested a password reset for your user account at {{ app_name }}.
+{% endblocktranslate %}
+
+{% translate "Please click this link and then follow the instruction to reset your password:" %}
+{{ url }}
+
+{% translate 'Your account information:' %}
+{% translate 'Name' %}: {{ recipient.nickname }}
+{% translate 'Email' %}: {{ recipient.email }}
+{% translate 'Date joined' %}: {{ recipient.date_joined }}
+
+{% translate "Thanks for using our app!" %}
+
+{% blocktranslate %}
+The {{ app_name }} team
+{% endblocktranslate %}
+
+{% endautoescape %}

@@ -1,5 +1,7 @@
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
+from django.utils.translation import gettext as _
 from rest_framework import serializers
 from rest_framework.reverse import reverse
 
@@ -49,6 +51,13 @@ class RegisterSerializer(serializers.ModelSerializer):
             }
         }
 
+    def validate_email(self, email):
+        if email and User.objects.filter(email=email).exists():
+            raise serializers.ValidationError(
+                _('A user with this email already exists.')
+            )
+        return email
+
 
 class UserSearchSerializer(serializers.ModelSerializer):
     class Meta:
@@ -75,3 +84,32 @@ class MyInfoSerializer(UserSerializer):
     def get_event_invitations_url(self, user):
         request = self.context['request']
         return reverse('user-my-event-invitation-list', request=request)
+
+
+class ChangePasswordSerializer(serializers.Serializer):
+    current_password = serializers.CharField(write_only=True)
+    new_password = serializers.CharField(write_only=True, validators=[validate_password])
+
+
+class EmailResetPasswordLinkSerializer(serializers.Serializer):
+    deeplink = serializers.CharField()
+    email = serializers.EmailField()
+
+    def validate_deeplink(self, link):
+        if link not in settings.ALLOWED_DEEPLINKS:
+            raise serializers.ValidationError(
+                _('This deeplink is not allowed.')
+            )
+        return link
+
+
+class ResetPasswordSerializer(serializers.Serializer):
+    uid = serializers.CharField()
+    token = serializers.CharField()
+    password = serializers.CharField(write_only=True, validators=[validate_password])
+
+
+class EmailResetPasswordLinkTaskSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ['nickname', 'email', 'date_joined']

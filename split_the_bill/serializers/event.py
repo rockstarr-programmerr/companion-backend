@@ -4,7 +4,7 @@ from rest_framework.fields import ListField
 from rest_framework.reverse import reverse
 
 from split_the_bill.models import Event, EventInvitation
-from split_the_bill.utils.url import update_url_params
+from companion.utils.url import update_url_params
 from user.serializers.user import UserSerializer
 
 from ._common import PkField

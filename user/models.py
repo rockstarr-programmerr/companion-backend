@@ -46,9 +46,10 @@ class User(AbstractUser):
         max_length=150,
     )
     avatar = models.ImageField(
+        _('avatar'),
         upload_to='users/avatar/%Y/%m',
         blank=True,
-        validators=[validate_image_file_extension]
+        validators=[validate_image_file_extension],
     )
     avatar_thumbnail = models.ImageField(
         upload_to='users/avatar_thumbnail/%Y/%m',
