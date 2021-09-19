@@ -40,6 +40,7 @@ env = environ.Env(
         'http://127.0.0.1:8000',
     ]),
     ADMINS=(list, []),
+    USE_X_FORWARDED_HOST=(bool, False),
 
     EMAIL_BACKEND=(str, 'django.core.mail.backends.filebased.EmailBackend'),
     EMAIL_FILE_PATH=(str, BASE_DIR / 'temp' / 'sent_emails'),
@@ -190,6 +191,8 @@ AUTH_USER_MODEL = 'user.User'
 CORS_ALLOWED_ORIGINS = env('CORS_ALLOWED_ORIGINS')
 
 CSRF_COOKIE_NAME = 'csrftokencompanion'
+
+USE_X_FORWARDED_HOST = env('USE_X_FORWARDED_HOST')
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
