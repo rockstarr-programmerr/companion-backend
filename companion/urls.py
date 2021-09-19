@@ -22,6 +22,7 @@ from . import root_endpoints, views
 
 urlpatterns = [
     path('', views.RootAPIView.as_view()),
+    path('test-error-logging/', views.TestErrorLoggingAPIView.as_view(), name='companion-test-error-logging'),
     path(root_endpoints.USER, include('user.urls')),
     path(root_endpoints.SPLIT_THE_BILL, include('split_the_bill.urls')),
     path('api-auth/', include('rest_framework.urls')),

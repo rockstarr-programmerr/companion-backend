@@ -1,5 +1,5 @@
 from django.conf import settings
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAdminUser
 from rest_framework.response import Response
 from rest_framework.reverse import reverse
 from rest_framework.views import APIView
@@ -18,6 +18,8 @@ class RootAPIView(APIView):
                 'user': request.build_absolute_uri(root_endpoints.USER),
                 'split_the_bill': request.build_absolute_uri(root_endpoints.SPLIT_THE_BILL),
             }
+            if request.user.is_staff:
+                data['test_error_logging'] = reverse('companion-test-error-logging', request=request)
         else:
             data = {
                 'email_reset_password_link': reverse('user-email-reset-password-link', request=request),
@@ -33,3 +35,13 @@ class RootAPIView(APIView):
             if settings.DEBUG:
                 data['browsable_api_login'] = reverse('rest_framework:login', request=request)
         return Response(data)
+
+
+class TestErrorLoggingAPIView(APIView):
+    """
+    When POST, an unhandled exception will be raised on the server.
+    """
+    permission_classes = [IsAdminUser]
+
+    def post(self, request):
+        raise NameError('Uvuvuwevwev')
