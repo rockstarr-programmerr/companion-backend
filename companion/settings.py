@@ -15,6 +15,7 @@ from datetime import timedelta
 from pathlib import Path
 
 import environ
+from email.utils import getaddresses
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -33,6 +34,7 @@ env = environ.Env(
         'http://localhost:8000',
         'http://127.0.0.1:8000',
     ]),
+    ADMINS=(list, []),
 
     EMAIL_BACKEND=(str, 'django.core.mail.backends.filebased.EmailBackend'),
     EMAIL_FILE_PATH=(str, BASE_DIR / 'temp' / 'sent_emails'),
@@ -252,6 +254,8 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'
 LOGIN_REDIRECT_URL = '/'
 
 PASSWORD_RESET_TIMEOUT = 30 * 60  # 30 minutes
+
+ADMINS = getaddresses(env('ADMINS'))
 
 ALLOWED_DEEPLINKS = env('ALLOWED_DEEPLINKS')
 
