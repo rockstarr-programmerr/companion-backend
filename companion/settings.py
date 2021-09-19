@@ -25,7 +25,12 @@ env = environ.Env(
     SECRET_KEY=(str, 'nothingtoseehere'),
     DEBUG=(bool, True),
     ALLOWED_HOSTS=(list, []),
+
+    # If you want to use unsafe characters in DATABASE_URL, you must escape it first using urllib.parse.quote
+    # Example: if your db password is xyz#$%abc, then your DATABASE_URL should be:
+    # mysql://user:xyz%23%24%25abc@mysql:3306/dbname
     DATABASE_URL=(str, 'sqlite:///db.sqlite3'),
+
     CORS_ALLOWED_ORIGINS=(list, [
         'http://localhost:8080',
         'http://127.0.0.1:8080',

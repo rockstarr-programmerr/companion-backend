@@ -116,6 +116,12 @@ Your report is inside `htmlcov` directory.
 
 ## Production
 
+### Database
+In development, sqlite is used as DB.
+In production, if you want to use a different DB, remember to install the appropriate DB client.
+
+Example: for MySQL, you need `pip install mysqlclient`
+
 ### Browsable API
 In production, only staff users can access browsable API.
 
