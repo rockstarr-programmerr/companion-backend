@@ -6,7 +6,7 @@ from django.utils.encoding import force_bytes
 from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 
 from companion.utils.url import update_url_params
-from user.tasks import send_email_reset_password_link
+from user.tasks import send_email_reset_password_link_task
 
 User = get_user_model()
 
@@ -24,7 +24,7 @@ class ResetPasswordBusiness:
     def send_email(self, deeplink):
         url = self.get_link(deeplink)
         serializer = EmailResetPasswordLinkTaskSerializer(instance=self.user)
-        send_email_reset_password_link.delay(serializer.data, url)
+        send_email_reset_password_link_task.delay(serializer.data, url)
 
     def reset_password(self, password, token):
         self.check_token(token)

@@ -7,6 +7,9 @@ from django.utils.translation import gettext_lazy as _
 
 
 @shared_task
+def send_email_reset_password_link_task(recipient, url):
+    return send_email_reset_password_link(recipient, url)
+
 def send_email_reset_password_link(recipient, url):
     date_joined = recipient['date_joined']
     date_joined_dt = isoparse(date_joined)
@@ -19,7 +22,7 @@ def send_email_reset_password_link(recipient, url):
         'app_name': _('Split the bill'),
     }
     title = loader.render_to_string('user/reset_password/email_title.txt', context)
-    title = title.strip()  # Remove newline at eof
+    title = title.replace('\n', '')  # Title cannot have newline
     message = loader.render_to_string('user/reset_password/email_body.txt', context)
     html_message = loader.render_to_string('user/reset_password/email_body.html', context)
     send_mail(title, message, None, [recipient['email']], html_message=html_message)

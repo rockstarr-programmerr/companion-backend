@@ -93,6 +93,10 @@ celery --app companion worker --loglevel INFO --pool solo
 
 **NOTE** Every time you make changes to a task, celery worker should be restarted.
 
+### Sending emails
+In development, emails are not actually sent, but instead saved to `temp/sent_emails`.
+You can inspect this directory to test email sending features.
+
 ### Test
 #### Run unittests
 ```

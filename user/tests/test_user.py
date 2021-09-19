@@ -1,18 +1,26 @@
 import json
 import random
 from pathlib import Path
+from unittest.mock import patch
 
 from django.conf import settings
 from django.contrib.auth import authenticate, get_user_model
+from django.core import mail
+from django.template import loader
+from django.utils import formats
 from faker import Faker
 from model_bakery import baker
 from parameterized import parameterized
 from rest_framework.reverse import reverse
 from rest_framework.test import APITestCase
 
-from companion.utils.testing import MediaTestCase
-from split_the_bill.models import Event, EventInvitation
 from companion.utils.datetime import format_iso
+from companion.utils.testing import MediaTestCase
+from companion.utils.url import get_url_params
+from split_the_bill.models import Event, EventInvitation
+from user.business.reset_password import ResetPasswordBusiness
+from user.serializers.user import EmailResetPasswordLinkTaskSerializer
+from user.tasks import send_email_reset_password_link
 from user.views import UserEventInvitationViewSet
 
 User = get_user_model()
@@ -598,6 +606,157 @@ class UserChangePasswordTestCase(_UserTestCase):
         if expected_new_password_errs:
             errs = result['new_password']
             self.assertListEqual(errs, expected_new_password_errs)
+
+
+@patch('user.business.reset_password.send_email_reset_password_link_task.delay', send_email_reset_password_link)
+class UserResetPasswordTestCase(_UserTestCase):
+    email_url = reverse('user-email-reset-password-link')
+    reset_url = reverse('user-reset-password')
+    login_url = reverse('token_obtain_pair')
+    deeplink = 'http://localhost:8000'
+
+    @patch('user.business.reset_password.ResetPasswordBusiness.get_link', return_value='http://test_url')
+    def test__email_content(self, *args, **kwargs):
+        user = baker.make(User)
+        data = {
+            'deeplink': self.deeplink,
+            'email': user.email,
+        }
+        self.client.force_authenticate(user=None)
+        res = self.client.post(self.email_url, data)
+        self.assertEqual(res.status_code, 202)
+
+        context = {
+            'url': 'http://test_url',
+            'recipient': {
+                'nickname': user.nickname,
+                'email': user.email,
+                'date_joined': formats.localize(user.date_joined),
+            },
+            'app_name': 'Split the bill',
+        }
+
+        self.assertEqual(len(mail.outbox), 1)
+        email = mail.outbox[0]
+
+        expected_subject = loader.render_to_string('user/reset_password/email_title.txt', context).replace('\n', '')
+        self.assertEqual(email.subject, expected_subject)
+
+        messages = email.message().get_payload()
+        self.assertEqual(len(messages), 2)
+
+        expected_msg = loader.render_to_string('user/reset_password/email_body.txt', context)
+        actual_msg = messages[0].get_payload()
+        self.assertEqual(expected_msg, actual_msg)
+
+        expected_html = loader.render_to_string('user/reset_password/email_body.html', context)
+        actual_html = messages[1].get_payload()
+        self.assertEqual(expected_html, actual_html)
+
+    def test__reset_password(self):
+        user = baker.make(User)
+        self.client.force_authenticate(user=None)
+
+        business = ResetPasswordBusiness(user)
+        link = business.get_link(self.deeplink)
+        params = get_url_params(link)
+        new_password = fake.password()
+
+        data = {
+            'uid': params['uid'],
+            'token': params['token'],
+            'password': new_password,
+        }
+        res = self.client.post(self.reset_url, data)
+        self.assertEqual(res.status_code, 200)
+
+        # Test user can authenticate with new password
+        data = {
+            'email': user.email,
+            'password': new_password,
+        }
+        res = self.client.post(self.login_url, data)
+        self.assertEqual(res.status_code, 200)
+
+    @parameterized.expand([
+        [{'deeplink': 'fakelink', 'email': fake.email()}, {'deeplink': ['This deeplink is not allowed.']}],
+        [{'deeplink': deeplink, 'email': 'fakeemail'}, {'email': ['Enter a valid email address.']}],
+    ])
+    def test__email_validation(self, data, expected_error):
+        self.client.force_authenticate(user=None)
+        res = self.client.post(self.email_url, data)
+        self.assertEqual(res.status_code, 400)
+        self.assertDictEqual(res.json(), expected_error)
+
+    def test__reset_password_validation(self):
+        user = baker.make(User)
+        self.client.force_authenticate(user=None)
+
+        business = ResetPasswordBusiness(user)
+        link = business.get_link(self.deeplink)
+        params = get_url_params(link)
+        new_password = fake.password()
+
+        # Invalid uid
+        data = {
+            'uid': 'fake uid',
+            'token': params['token'],
+            'password': new_password,
+        }
+        res = self.client.post(self.reset_url, data)
+        self.assertEqual(res.status_code, 404)
+        self.assertDictEqual(res.json(), {'detail': 'Cannot find user with the given `uid`.'})
+
+        # Invalid token
+        data = {
+            'uid': params['uid'],
+            'token': 'fake token',
+            'password': new_password,
+        }
+        res = self.client.post(self.reset_url, data)
+        self.assertEqual(res.status_code, 403)
+        self.assertDictEqual(res.json(), {'detail': 'Reset password token invalid.'})
+
+        # Password not strong enough
+        data = {
+            'uid': params['uid'],
+            'token': params['token'],
+            'password': '1234',
+        }
+        res = self.client.post(self.reset_url, data)
+        self.assertEqual(res.status_code, 400)
+        self.assertDictEqual(res.json(), {'password': ['This password is too short. It must contain at least 8 characters.', 'This password is entirely numeric.']})
+
+        # Cannot use old token after login
+        reset_pwd_data = {
+            'uid': params['uid'],
+            'token': params['token'],
+            'password': new_password,
+        }
+        self.client.post(self.reset_url, reset_pwd_data)
+        login_data = {
+            'email': user.email,
+            'password': new_password,
+        }
+        self.client.post(self.login_url, login_data)
+
+        another_password = fake.password()
+        new_reset_pwd_data = {
+            'uid': params['uid'],
+            'token': params['token'],
+            'password': another_password,
+        }
+        res = self.client.post(self.reset_url, new_reset_pwd_data)
+        self.assertEqual(res.status_code, 403)
+        self.assertDictEqual(res.json(), {'detail': 'Reset password token invalid.'})
+
+        new_login_data = {
+            'email': user.email,
+            'password': another_password,
+        }
+        res = self.client.post(self.login_url, new_login_data)
+        self.assertEqual(res.status_code, 401)
+
 
 
 class UserMyEventInvitationTestCase(_UserTestCase):

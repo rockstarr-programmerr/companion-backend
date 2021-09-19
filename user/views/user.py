@@ -41,8 +41,8 @@ class UserViewSet(mixins.RetrieveModelMixin,
     Only show users who participated the same events as the logged in user.
 
     Endpoints for authentication:
-    "user/login/": Login with credential (email, password), response with "access" and "refresh" token.
-    "user/token-refresh/": Refresh token, response with another "access" and "refresh" token.
+    "users/login/": Login with credential (email, password), response with "access" and "refresh" token.
+    "users/token-refresh/": Refresh token, response with another "access" and "refresh" token.
     """
     queryset = User.objects.all()
     serializer_class = UserSerializer

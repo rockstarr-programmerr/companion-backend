@@ -1,1 +1,8 @@
-{% load i18n %}{% autoescape off %}{% blocktranslate %}Password reset on {{ app_name }}{% endblocktranslate %}{% endautoescape %}
+{% load i18n %}
+{% autoescape off %}
+
+{% blocktranslate %}
+Password reset on {{ app_name }}
+{% endblocktranslate %}
+
+{% endautoescape %}

@@ -34,6 +34,8 @@ env = environ.Env(
         'http://127.0.0.1:8000',
     ]),
 
+    EMAIL_BACKEND=(str, 'django.core.mail.backends.filebased.EmailBackend'),
+    EMAIL_FILE_PATH=(str, BASE_DIR / 'temp' / 'sent_emails'),
     EMAIL_HOST=(str, ''),
     EMAIL_PORT=(str, ''),
     EMAIL_USE_SSL=(bool, True),
@@ -253,6 +255,8 @@ PASSWORD_RESET_TIMEOUT = 30 * 60  # 30 minutes
 
 ALLOWED_DEEPLINKS = env('ALLOWED_DEEPLINKS')
 
+EMAIL_BACKEND = env('EMAIL_BACKEND')
+EMAIL_FILE_PATH = env('EMAIL_FILE_PATH')
 EMAIL_HOST = env('EMAIL_HOST')
 EMAIL_PORT = env('EMAIL_PORT')
 EMAIL_USE_SSL = env('EMAIL_USE_SSL')
