@@ -107,3 +107,9 @@ class ResetPasswordSerializer(serializers.Serializer):
     uid = serializers.CharField()
     token = serializers.CharField()
     password = serializers.CharField(write_only=True, validators=[validate_password])
+
+
+class EmailResetPasswordLinkTaskSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ['nickname', 'email', 'date_joined']

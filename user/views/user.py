@@ -59,7 +59,6 @@ class UserViewSet(mixins.RetrieveModelMixin,
     def register(self, request):
         """
         Register user.
-        `email` is not required, but must be unique if provided.
         """
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -80,6 +79,9 @@ class UserViewSet(mixins.RetrieveModelMixin,
         ordering_fields=['nickname', 'email']
     )
     def search(self, request):
+        """
+        Search for user by nickname or email.
+        """
         queryset = self.filter_queryset(self.get_queryset())
         page = self.paginate_queryset(queryset)
         serializer = self.get_serializer(instance=page, many=True)
@@ -115,6 +117,9 @@ class UserViewSet(mixins.RetrieveModelMixin,
         permission_classes=[AllowAny],
     )
     def email_reset_password_link(self, request):
+        """
+        Send reset password link email.
+        """
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         deeplink = serializer.validated_data['deeplink']
@@ -125,7 +130,7 @@ class UserViewSet(mixins.RetrieveModelMixin,
             business = ResetPasswordBusiness(user)
             business.send_email(deeplink)
 
-        return Response()
+        return Response(status=status.HTTP_202_ACCEPTED)
 
     @action(
         detail=False, methods=['POST'],
@@ -136,6 +141,7 @@ class UserViewSet(mixins.RetrieveModelMixin,
     def reset_password(self, request):
         """
         Reset user's password.
+        For `deeplink`, you must config the `ALLOWED_DEEPLINKS` variable in `companion/settings.py`
         Return 403 if `token` is not valid.
         Return 404 if `uid` is not valid.
         """

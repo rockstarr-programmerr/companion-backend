@@ -1,0 +1,26 @@
+{% load i18n %}
+{% autoescape off %}
+
+<h1>{% translate 'Hi there' %} :)</h1>
+
+{% blocktranslate %}
+<p>You're receiving this email because you requested a password reset for your user account at <b>{{ app_name }}</b>.</p>
+{% endblocktranslate %}
+
+<p>{% translate "Please click this link and then follow the instruction to reset your password:" %}</p>
+<a href="{{ url }}">{{ url }}</a>
+
+<p>{% translate 'Your account information:' %}</p>
+<ul>
+    <li>{% translate 'Name' %}: {{ recipient.nickname }}</li>
+    <li>{% translate 'Email' %}: {{ recipient.email }}</li>
+    <li>{% translate 'Date joined' %}: {{ recipient.date_joined }}</li>
+</ul>
+
+<p>{% translate "Thanks for using our app!" %}</p>
+
+{% blocktranslate %}
+<p>The <b>{{ app_name }}</b> team.</p>
+{% endblocktranslate %}
+
+{% endautoescape %}

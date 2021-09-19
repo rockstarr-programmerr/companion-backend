@@ -85,10 +85,13 @@ rabbitmqctl add_vhost companion_vhost
 rabbitmqctl set_permissions -p companion_vhost companion_user ".*" ".*" ".*"
 ```
 
+#### Celery
 ##### Start the worker process
 ```
 celery --app companion worker --loglevel INFO --pool solo
 ```
+
+**NOTE** Every time you make changes to a task, celery worker should be restarted.
 
 ### Test
 #### Run unittests

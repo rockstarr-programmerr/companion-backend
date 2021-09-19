@@ -1,3 +1,4 @@
+from user.serializers.user import EmailResetPasswordLinkTaskSerializer
 from django.contrib.auth import get_user_model
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.core.exceptions import ValidationError
@@ -22,7 +23,8 @@ class ResetPasswordBusiness:
 
     def send_email(self, deeplink):
         url = self.get_link(deeplink)
-        send_email_reset_password_link.delay(self.user.email, url)
+        serializer = EmailResetPasswordLinkTaskSerializer(instance=self.user)
+        send_email_reset_password_link.delay(serializer.data, url)
 
     def reset_password(self, password, token):
         self.check_token(token)
