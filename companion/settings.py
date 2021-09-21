@@ -42,6 +42,8 @@ env = environ.Env(
     ADMINS=(list, []),
     USE_X_FORWARDED_HOST=(bool, False),
     SECURE_PROXY_SSL_HEADER=(tuple, None),
+    CSRF_COOKIE_NAME=(str, 'csrftoken'),
+    SESSION_COOKIE_NAME=(str, 'sessionid'),
 
     EMAIL_BACKEND=(str, 'django.core.mail.backends.filebased.EmailBackend'),
     EMAIL_FILE_PATH=(str, BASE_DIR / 'temp' / 'sent_emails'),
@@ -323,6 +325,9 @@ if env('SOCIALACCOUNT_APP_USE_ENV'):
     }
 
 CELERY_BROKER_URL = env('CELERY_BROKER_URL')
+
+CSRF_COOKIE_NAME = env('CSRF_COOKIE_NAME')
+SESSION_COOKIE_NAME = env('SESSION_COOKIE_NAME')
 
 IS_TESTING = 'test' in sys.argv
 
