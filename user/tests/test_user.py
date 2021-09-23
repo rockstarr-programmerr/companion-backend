@@ -107,7 +107,7 @@ class UserReadTestCase(_UserTestCase):
             user = random.choice(self.share_members)
             users = list(self.event1.members.all()) + list(self.event2.members.all())
             users = list(set(users))  # Make unique
-            users.sort(key=lambda user: user.nickname)
+            users.sort(key=lambda user: user.nickname.lower())
         else:
             event = getattr(self, f'event{event_number}')
             user = random.choice(getattr(self, f'members{event_number}'))

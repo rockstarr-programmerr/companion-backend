@@ -27,6 +27,7 @@ class UserFilter(filters.FilterSet):
         member_pks = [member.pk for member in members]
 
         pks = member_pks + [self.request.user.pk]
+        pks = list(set(pks))  # Make unique
         return parent.filter(pk__in=pks)
 
 
