@@ -44,6 +44,9 @@ env = environ.Env(
     SECURE_PROXY_SSL_HEADER=(tuple, None),
     CSRF_COOKIE_NAME=(str, 'csrftoken'),
     SESSION_COOKIE_NAME=(str, 'sessionid'),
+    SESSION_COOKIE_SECURE=(bool, False),
+    CSRF_COOKIE_SECURE=(bool, False),
+    SECURE_HSTS_SECONDS=(int, 0),
 
     EMAIL_BACKEND=(str, 'django.core.mail.backends.filebased.EmailBackend'),
     EMAIL_FILE_PATH=(str, BASE_DIR / 'temp' / 'sent_emails'),
@@ -328,6 +331,9 @@ CELERY_BROKER_URL = env('CELERY_BROKER_URL')
 
 CSRF_COOKIE_NAME = env('CSRF_COOKIE_NAME')
 SESSION_COOKIE_NAME = env('SESSION_COOKIE_NAME')
+SESSION_COOKIE_SECURE = env('SESSION_COOKIE_SECURE')
+CSRF_COOKIE_SECURE = env('CSRF_COOKIE_SECURE')
+SECURE_HSTS_SECONDS = env('SECURE_HSTS_SECONDS')
 
 IS_TESTING = 'test' in sys.argv
 
