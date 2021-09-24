@@ -7,3 +7,4 @@ media/
 .coverage
 htmlcov/
 temp/
+*.pid
