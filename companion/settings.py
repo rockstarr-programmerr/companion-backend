@@ -67,6 +67,7 @@ env = environ.Env(
     SOCIALACCOUNT_FACEBOOK_KEY=(str, ''),
 
     CELERY_BROKER_URL=(str, 'amqp://companion_user:companion_password@localhost:5672/companion_vhost'),
+    FILE_UPLOAD_MAX_MEMORY_SIZE=(int, 2621440),
     FILE_UPLOAD_TEMP_DIR=(str, None),
 )
 # reading .env file
@@ -337,6 +338,7 @@ CSRF_COOKIE_SECURE = env('CSRF_COOKIE_SECURE')
 SECURE_HSTS_SECONDS = env('SECURE_HSTS_SECONDS')
 
 FILE_UPLOAD_TEMP_DIR = env('FILE_UPLOAD_TEMP_DIR')
+FILE_UPLOAD_MAX_MEMORY_SIZE = env('FILE_UPLOAD_MAX_MEMORY_SIZE')
 
 IS_TESTING = 'test' in sys.argv
 
