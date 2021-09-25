@@ -67,6 +67,7 @@ env = environ.Env(
     SOCIALACCOUNT_FACEBOOK_KEY=(str, ''),
 
     CELERY_BROKER_URL=(str, 'amqp://companion_user:companion_password@localhost:5672/companion_vhost'),
+    FILE_UPLOAD_TEMP_DIR=(str, None),
 )
 # reading .env file
 env_file = str(BASE_DIR / '.env')
@@ -334,6 +335,8 @@ SESSION_COOKIE_NAME = env('SESSION_COOKIE_NAME')
 SESSION_COOKIE_SECURE = env('SESSION_COOKIE_SECURE')
 CSRF_COOKIE_SECURE = env('CSRF_COOKIE_SECURE')
 SECURE_HSTS_SECONDS = env('SECURE_HSTS_SECONDS')
+
+FILE_UPLOAD_TEMP_DIR = env('FILE_UPLOAD_TEMP_DIR')
 
 IS_TESTING = 'test' in sys.argv
 
