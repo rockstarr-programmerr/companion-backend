@@ -17,6 +17,9 @@ class MyInfoViewSet(mixins.RetrieveModelMixin,
 
     To update avatar: send image with Content-Type = multipart/form-data
     To remove avatar: send request with {"avatar": null}
+
+    Maximum avatar size: 10MB.
+    If exceed, will response with HTTP 413 Payload Too Large.
     """
     queryset = User.objects.all()
     serializer_class = MyInfoSerializer
