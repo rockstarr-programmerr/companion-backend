@@ -1,7 +1,9 @@
 from django.contrib.auth import get_user_model
+from django.core.validators import MinValueValidator
 from django.db import models
 from django.db.models.enums import TextChoices
-from django.core.validators import MinValueValidator
+
+from split_the_bill.querysets.transaction import TransactionQuerySet
 
 from ._common import TimeStamp
 from .event import Event
@@ -22,6 +24,8 @@ class Transaction(TimeStamp):
     to_user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, related_name='transactions_received')
     transaction_type = models.CharField(max_length=12, choices=Types.choices)
     amount = models.PositiveIntegerField(validators=[MinValueValidator(1)])
+
+    objects = TransactionQuerySet.as_manager()
 
     class Meta:
         ordering = ['-create_time']

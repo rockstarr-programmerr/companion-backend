@@ -4,11 +4,12 @@ from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
 
 from companion.utils.api import extra_action_urls
-from split_the_bill.business import event as event_business
+from split_the_bill.business.event import EventBusiness
 from split_the_bill.filters import EventFilter
 from split_the_bill.models import Event
 from split_the_bill.permissions import IsEventCreatorOrReadonly
 from split_the_bill.serializers.event import (CancelInviteMembersSerializer,
+                                              ChartInfoSerializer,
                                               EventSerializer,
                                               InviteMembersSerializer,
                                               JoinWithQRCodeSerializer,
@@ -75,7 +76,8 @@ class EventViewSet(ModelViewSet):
         serializer.is_valid(raise_exception=True)
 
         member_pks = serializer.validated_data['member_pks']
-        event_business.remove_members(event, member_pks)
+        business = EventBusiness(event)
+        business.remove_members(member_pks)
 
         return Response()
 
@@ -114,3 +116,18 @@ class EventViewSet(ModelViewSet):
         event = self.get_object()
         event.create_qr_code(request, reset_token=True)
         return Response()
+
+    @action(
+        methods=['GET'], detail=True, url_path='chart-info',
+        serializer_class=ChartInfoSerializer,
+    )
+    def chart_info(self, request, pk):
+        event = self.get_object()
+        business = EventBusiness(event)
+        total_fund = business.get_total_fund()
+        total_expense = business.get_total_expense()
+        serializer = self.get_serializer(instance={
+            'total_fund': total_fund,
+            'total_expense': total_expense,
+        })
+        return Response(serializer.data)
