@@ -49,6 +49,7 @@ class EventSerializer(serializers.HyperlinkedModelSerializer):
             'remove_members': reverse('event-remove-members', **kwargs),
             'reset_qr': reverse('event-reset-qr', **kwargs),
             'chart_info': reverse('event-chart-info', **kwargs),
+            'settle_expenses': reverse('event-settle-expenses', **kwargs),
         }
 
     def create(self, validated_data):
@@ -162,3 +163,9 @@ class ResetQRCodeSerializer(serializers.Serializer):
 class ChartInfoSerializer(serializers.Serializer):
     total_fund = serializers.IntegerField()
     total_expense = serializers.IntegerField()
+
+
+class SettleExpensesSerializer(serializers.Serializer):
+    from_user = UserSerializer()
+    to_user = UserSerializer()
+    amount = serializers.IntegerField()

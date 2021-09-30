@@ -4,7 +4,7 @@ from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
 
 from companion.utils.api import extra_action_urls
-from split_the_bill.business.event import EventBusiness
+from split_the_bill.business.event import EventBusiness, SplitTheBillBusiness
 from split_the_bill.filters import EventFilter
 from split_the_bill.models import Event
 from split_the_bill.permissions import IsEventCreatorOrReadonly
@@ -14,7 +14,8 @@ from split_the_bill.serializers.event import (CancelInviteMembersSerializer,
                                               InviteMembersSerializer,
                                               JoinWithQRCodeSerializer,
                                               RemoveMembersSerializer,
-                                              ResetQRCodeSerializer)
+                                              ResetQRCodeSerializer,
+                                              SettleExpensesSerializer)
 
 
 @extra_action_urls
@@ -130,4 +131,15 @@ class EventViewSet(ModelViewSet):
             'total_fund': total_fund,
             'total_expense': total_expense,
         })
+        return Response(serializer.data)
+
+    @action(
+        methods=['GET'], detail=True, url_path='settle-expenses',
+        serializer_class=SettleExpensesSerializer,
+    )
+    def settle_expenses(self, request, pk):
+        event = self.get_object()
+        business = SplitTheBillBusiness(event)
+        cash_flows = business.settle()
+        serializer = self.get_serializer(instance=cash_flows, many=True)
         return Response(serializer.data)
