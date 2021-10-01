@@ -42,9 +42,9 @@ class SplitTheBillBusiness:
     def get_transactions(self):
         return list(self.event.transactions.all())
 
-    def settle(self):
+    def settle(self, tolerance=1000):
         cash_flows = self.get_cash_flows()
-        minimized_cash_flows = self.minimize_cash_flows(cash_flows)
+        minimized_cash_flows = self.minimize_cash_flows(cash_flows, tolerance)
         return minimized_cash_flows
 
     def get_cash_flows(self):
@@ -65,7 +65,7 @@ class SplitTheBillBusiness:
 
         return cash_flows
 
-    def minimize_cash_flows(self, cash_flows):
+    def minimize_cash_flows(self, cash_flows, tolerance):
         minimized_cash_flows = []
 
         members = copy(self.members)
@@ -100,6 +100,8 @@ class SplitTheBillBusiness:
                 settled_member = biggest_debtor
                 settle_amount = -biggest_debit
 
+            if tolerance:
+                settle_amount = settle_amount - (settle_amount % tolerance)
             new_cash_flow = _CashFlow(biggest_debtor, biggest_creditor, settle_amount)
             minimized_cash_flows.append(new_cash_flow)
 

@@ -138,8 +138,25 @@ class EventViewSet(ModelViewSet):
         serializer_class=SettleExpensesSerializer,
     )
     def settle_expenses(self, request, pk):
+        """
+        Settle expenses for members.
+
+        Query params "?tolerance=<a number greater than or equal to 0>" is supported.
+        This amount is the small changes that we can ignore for the sake of simpler transactions.
+
+        Example:
+        If the original transaction is "A pay B 12500", and tolerance=1000, then it becomes "A pay B 12000" (500 is ignored).
+
+        Default value if not provided is 1000 (VNĐ).
+        """
+        serializer = self.get_serializer(data=request.query_params)
+        serializer.is_valid(raise_exception=True)
+        tolerance = serializer.validated_data['tolerance']
+
         event = self.get_object()
         business = SplitTheBillBusiness(event)
-        cash_flows = business.settle()
-        serializer = self.get_serializer(instance=cash_flows, many=True)
-        return Response(serializer.data)
+        cash_flows = business.settle(tolerance=tolerance)
+
+        page = self.paginate_queryset(cash_flows)
+        serializer = self.get_serializer(instance=page, many=True)
+        return self.get_paginated_response(serializer.data)

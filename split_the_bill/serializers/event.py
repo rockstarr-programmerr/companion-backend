@@ -166,6 +166,7 @@ class ChartInfoSerializer(serializers.Serializer):
 
 
 class SettleExpensesSerializer(serializers.Serializer):
-    from_user = UserSerializer()
-    to_user = UserSerializer()
-    amount = serializers.IntegerField()
+    tolerance = serializers.IntegerField(write_only=True, default=1000, min_value=0)
+    from_user = UserSerializer(read_only=True)
+    to_user = UserSerializer(read_only=True)
+    amount = serializers.IntegerField(read_only=True)
