@@ -8,7 +8,7 @@ class TransactionFilter(filters.FilterSet):
         model = Transaction
         fields = {
             'event': ['exact'],
-            'transaction_type': ['exact'],
+            'transaction_type': ['exact', 'in'],
             'from_user': ['exact'],
             'from_user__nickname': ['icontains'],
             'from_user__email': ['icontains'],

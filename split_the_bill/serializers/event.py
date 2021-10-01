@@ -48,6 +48,8 @@ class EventSerializer(serializers.HyperlinkedModelSerializer):
             'cancel_invite_members': reverse('event-cancel-invite-members', **kwargs),
             'remove_members': reverse('event-remove-members', **kwargs),
             'reset_qr': reverse('event-reset-qr', **kwargs),
+            'chart_info': reverse('event-chart-info', **kwargs),
+            'settle_expenses': reverse('event-settle-expenses', **kwargs),
         }
 
     def create(self, validated_data):
@@ -156,3 +158,15 @@ class JoinWithQRCodeSerializer(serializers.Serializer):
 
 class ResetQRCodeSerializer(serializers.Serializer):
     """This serializer is intentionally left blank."""
+
+
+class ChartInfoSerializer(serializers.Serializer):
+    total_fund = serializers.IntegerField()
+    total_expense = serializers.IntegerField()
+
+
+class SettleExpensesSerializer(serializers.Serializer):
+    tolerance = serializers.IntegerField(write_only=True, default=1000, min_value=0)
+    from_user = UserSerializer(read_only=True)
+    to_user = UserSerializer(read_only=True)
+    amount = serializers.IntegerField(read_only=True)

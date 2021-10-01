@@ -6,24 +6,24 @@ class IsGroupOwnerOrReadonly(IsAuthenticated):
     message = _('Only group owner has permission for this.')
 
     def has_object_permission(self, request, view, obj):
-        if not hasattr(obj, 'owner'):
-            obj = obj.group
-        return (
-            request.method in SAFE_METHODS or
-            request.user == obj.owner
-        )
+        if request.method in SAFE_METHODS:
+            return True
+        else:
+            if not hasattr(obj, 'owner'):
+                obj = obj.group
+            return request.user == obj.owner
 
 
 class IsEventCreatorOrReadonly(IsAuthenticated):
     message = _('Only event creator has permission for this.')
 
     def has_object_permission(self, request, view, obj):
-        if not hasattr(obj, 'creator'):
-            obj = obj.event
-        return (
-            request.method in SAFE_METHODS or
+        if request.method in SAFE_METHODS:
+            return True
+        else:
+            if not hasattr(obj, 'creator'):
+                obj = obj.event
             request.user == obj.creator
-        )
 
 
 class IsEventMembers(IsAuthenticated):
