@@ -6,6 +6,7 @@ from allauth.socialaccount.providers.oauth2.client import OAuth2Error
 from allauth.socialaccount.providers.oauth2.views import OAuth2CallbackView
 from django.core.exceptions import PermissionDenied
 from django.utils.translation import gettext as _
+from django.views.decorators.csrf import csrf_exempt
 from requests import RequestException
 from rest_framework import status
 from rest_framework.generics import GenericAPIView
@@ -30,6 +31,11 @@ def complete_jwt_login(login):
 class MobileAppCallbackView(GenericAPIView, OAuth2CallbackView):
     serializer_class = CallbackViewSerializer
     permission_classes = [AllowAny]
+
+    @classmethod
+    def adapter_view(cls, *args, **kwargs):
+        view = super().adapter_view(*args, **kwargs)
+        return csrf_exempt(view)
 
     def post(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
