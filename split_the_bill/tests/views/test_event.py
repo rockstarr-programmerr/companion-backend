@@ -76,6 +76,8 @@ class _EventViewSetTestCase(MediaTestCase):
                 'cancel_invite_members': reverse('event-cancel-invite-members', kwargs={'pk': event.pk}, request=request),
                 'remove_members': reverse('event-remove-members', kwargs={'pk': event.pk}, request=request),
                 'reset_qr': reverse('event-reset-qr', kwargs={'pk': event.pk}, request=request),
+                'chart_info': reverse('event-chart-info', kwargs={'pk': event.pk}, request=request),
+                'settle_expenses': reverse('event-settle-expenses', kwargs={'pk': event.pk}, request=request),
             },
         }
 

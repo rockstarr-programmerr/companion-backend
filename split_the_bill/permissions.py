@@ -23,7 +23,7 @@ class IsEventCreatorOrReadonly(IsAuthenticated):
         else:
             if not hasattr(obj, 'creator'):
                 obj = obj.event
-            request.user == obj.creator
+            return request.user == obj.creator
 
 
 class IsEventMembers(IsAuthenticated):

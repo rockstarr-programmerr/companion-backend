@@ -49,6 +49,16 @@ class _UserTestCase(APITestCase):
             self.event2.members.add(*self.share_members)
 
     @staticmethod
+    def make_nickname_lowercase():
+        """
+        Make all nickname lowercase
+        to ensure consistent result when testing in Windows or Linux
+        """
+        for user in User.objects.all():
+            user.nickname = user.nickname.lower()
+            user.save()
+
+    @staticmethod
     def get_user_json(user_or_pk, request=None):
         if not user_or_pk:
             return None
@@ -103,11 +113,12 @@ class UserReadTestCase(_UserTestCase):
         [2, True],
     ])
     def test__get_list(self, event_number, is_share_member):
+        self.make_nickname_lowercase()
         if is_share_member:
             user = random.choice(self.share_members)
             users = list(self.event1.members.all()) + list(self.event2.members.all())
             users = list(set(users))  # Make unique
-            users.sort(key=lambda user: user.nickname.lower())
+            users.sort(key=lambda user: user.nickname)
         else:
             event = getattr(self, f'event{event_number}')
             user = random.choice(getattr(self, f'members{event_number}'))
