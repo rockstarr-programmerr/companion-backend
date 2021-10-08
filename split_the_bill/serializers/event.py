@@ -15,14 +15,16 @@ class EventSerializer(serializers.HyperlinkedModelSerializer):
     members = UserSerializer(many=True, read_only=True)
     transactions_url = serializers.SerializerMethodField(read_only=True)
     invitations_url = serializers.SerializerMethodField(read_only=True)
+    settlements_url = serializers.SerializerMethodField(read_only=True)
     extra_action_urls = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = Event
         fields = [
             'url', 'pk', 'name', 'qr_code',
-            'creator', 'members', 'create_time',
-            'transactions_url', 'invitations_url', 'extra_action_urls',
+            'creator', 'members', 'is_settled', 'create_time',
+            'transactions_url', 'invitations_url', 'settlements_url',
+            'extra_action_urls',
         ]
         extra_kwargs = {
             'qr_code': {'read_only': True},
@@ -38,6 +40,11 @@ class EventSerializer(serializers.HyperlinkedModelSerializer):
         params = {'event': event.pk}
         return update_url_params(url, params)
 
+    def get_settlements_url(self, event):
+        url = reverse('settlement-list', request=self.context['request'])
+        params = {'event': event.pk}
+        return update_url_params(url, params)
+
     def get_extra_action_urls(self, transaction):
         kwargs = {
             'kwargs': {'pk': transaction.pk},
@@ -49,7 +56,8 @@ class EventSerializer(serializers.HyperlinkedModelSerializer):
             'remove_members': reverse('event-remove-members', **kwargs),
             'reset_qr': reverse('event-reset-qr', **kwargs),
             'chart_info': reverse('event-chart-info', **kwargs),
-            'settle_expenses': reverse('event-settle-expenses', **kwargs),
+            'preview_settlements': reverse('event-preview-settlements', **kwargs),
+            'settle': reverse('event-settle', **kwargs),
         }
 
     def create(self, validated_data):
@@ -165,8 +173,12 @@ class ChartInfoSerializer(serializers.Serializer):
     total_expense = serializers.IntegerField()
 
 
-class SettleExpensesSerializer(serializers.Serializer):
+class PreviewSettlementSerializer(serializers.Serializer):
     tolerance = serializers.IntegerField(write_only=True, default=1000, min_value=0)
     from_user = UserSerializer(read_only=True)
     to_user = UserSerializer(read_only=True)
     amount = serializers.IntegerField(read_only=True)
+
+
+class SettleExpenseSerializer(serializers.Serializer):
+    tolerance = serializers.IntegerField(write_only=True, default=1000, min_value=0)

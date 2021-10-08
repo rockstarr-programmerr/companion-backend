@@ -23,6 +23,7 @@ class Event(TimeStamp):
     invited_users = models.ManyToManyField(User, through=EventInvitation, related_name='events_invited_to')
     qr_code = models.ImageField(upload_to='split_the_bill/event/qr_code/%Y/%m')
     join_token = models.CharField(max_length=255, unique=True)
+    is_settled = models.BooleanField(default=False)
 
     def __str__(self):
         return f'{self.name} | {self.creator}'
@@ -71,3 +72,8 @@ class Event(TimeStamp):
     def join_with_qr_code(cls, user, token):
         event = get_object_or_404(cls, join_token=token)
         event.members.add(user)
+
+    def settle(self, commit=True):
+        self.is_settled = True
+        if commit:
+            self.save()
