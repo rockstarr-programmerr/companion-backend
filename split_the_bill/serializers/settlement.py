@@ -6,7 +6,8 @@ class SettlementSerializer(serializers.HyperlinkedModelSerializer):
     class Meta:
         model = Settlement
         fields = [
-            'event', 'from_user', 'to_user',
+            'url', 'pk', 'event',
+            'from_user', 'to_user',
             'is_paid', 'amount',
         ]
         read_only_fields = [
