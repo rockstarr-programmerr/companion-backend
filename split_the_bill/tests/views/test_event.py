@@ -58,26 +58,32 @@ class _EventViewSetTestCase(MediaTestCase):
         invitations_url = reverse('event-invitation-list', request=request)
         invitations_url = update_url_params(invitations_url, {'event': event.pk})
 
+        settlements_url = reverse('settlement-list', request=request)
+        settlements_url = update_url_params(settlements_url, {'event': event.pk})
+
         return {
             'url': reverse('event-detail', kwargs={'pk': event.pk}, request=request),
             'pk': event.pk,
             'name': event.name,
-            'creator': self.get_user_json(event.creator, request=request),
             'qr_code': f'http://testserver{event.qr_code.url}',
+            'creator': self.get_user_json(event.creator, request=request),
             'members': [
                 self.get_user_json(member, request=request)
                 for member in members
             ],
+            'is_settled': event.is_settled,
             'create_time': format_iso(event.create_time),
             'transactions_url': transactions_url,
             'invitations_url': invitations_url,
+            'settlements_url': settlements_url,
             'extra_action_urls': {
                 'invite_members': reverse('event-invite-members', kwargs={'pk': event.pk}, request=request),
                 'cancel_invite_members': reverse('event-cancel-invite-members', kwargs={'pk': event.pk}, request=request),
                 'remove_members': reverse('event-remove-members', kwargs={'pk': event.pk}, request=request),
                 'reset_qr': reverse('event-reset-qr', kwargs={'pk': event.pk}, request=request),
                 'chart_info': reverse('event-chart-info', kwargs={'pk': event.pk}, request=request),
-                'settle_expenses': reverse('event-settle-expenses', kwargs={'pk': event.pk}, request=request),
+                'preview_settlements': reverse('event-preview-settlements', kwargs={'pk': event.pk}, request=request),
+                'settle': reverse('event-settle', kwargs={'pk': event.pk}, request=request),
             },
         }
 

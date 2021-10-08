@@ -23,7 +23,8 @@ class EventSerializer(serializers.HyperlinkedModelSerializer):
         fields = [
             'url', 'pk', 'name', 'qr_code',
             'creator', 'members', 'is_settled', 'create_time',
-            'transactions_url', 'invitations_url', 'extra_action_urls',
+            'transactions_url', 'invitations_url', 'settlements_url',
+            'extra_action_urls',
         ]
         extra_kwargs = {
             'qr_code': {'read_only': True},
@@ -55,7 +56,7 @@ class EventSerializer(serializers.HyperlinkedModelSerializer):
             'remove_members': reverse('event-remove-members', **kwargs),
             'reset_qr': reverse('event-reset-qr', **kwargs),
             'chart_info': reverse('event-chart-info', **kwargs),
-            'preview-settlements': reverse('event-preview-settlements', **kwargs),
+            'preview_settlements': reverse('event-preview-settlements', **kwargs),
             'settle': reverse('event-settle', **kwargs),
         }
 
