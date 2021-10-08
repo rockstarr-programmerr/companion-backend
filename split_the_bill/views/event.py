@@ -6,16 +6,17 @@ from rest_framework.viewsets import ModelViewSet
 from companion.utils.api import extra_action_urls
 from split_the_bill.business.event import EventBusiness, SplitTheBillBusiness
 from split_the_bill.filters import EventFilter
-from split_the_bill.models import Event
+from split_the_bill.models import Event, Settlement
 from split_the_bill.permissions import IsEventCreatorOrReadonly
 from split_the_bill.serializers.event import (CancelInviteMembersSerializer,
                                               ChartInfoSerializer,
                                               EventSerializer,
                                               InviteMembersSerializer,
                                               JoinWithQRCodeSerializer,
+                                              PreviewSettlementSerializer,
                                               RemoveMembersSerializer,
                                               ResetQRCodeSerializer,
-                                              SettleExpensesSerializer)
+                                              SettleExpenseSerializer)
 
 
 @extra_action_urls
@@ -134,10 +135,10 @@ class EventViewSet(ModelViewSet):
         return Response(serializer.data)
 
     @action(
-        methods=['GET'], detail=True, url_path='settle-expenses',
-        serializer_class=SettleExpensesSerializer,
+        methods=['GET'], detail=True, url_path='preview-settlements',
+        serializer_class=PreviewSettlementSerializer,
     )
-    def settle_expenses(self, request, pk):
+    def preview_settlements(self, request, pk):
         """
         Settle expenses for members.
 
@@ -160,3 +161,28 @@ class EventViewSet(ModelViewSet):
         page = self.paginate_queryset(cash_flows)
         serializer = self.get_serializer(instance=page, many=True)
         return self.get_paginated_response(serializer.data)
+
+    @action(
+        methods=['POST'], detail=True, url_path='settle',
+        serializer_class=SettleExpenseSerializer,
+    )
+    def settle(self, request, pk):
+        """
+        Params "tolerance": the small changes that we can ignore for the sake of simpler transactions.
+
+        Example:
+        If the original transaction is "A pay B 12500", and tolerance=1000, then it becomes "A pay B 12000" (500 is ignored).
+
+        Default value if not provided is 1000 (VNĐ).
+        """
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        tolerance = serializer.validated_data['tolerance']
+
+        event = self.get_object()
+        event.settle()
+        business = SplitTheBillBusiness(event)
+        cash_flows = business.settle(tolerance=tolerance)
+        Settlement.create_from_cashflows(event, cash_flows)
+
+        return Response()
