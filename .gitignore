@@ -9,3 +9,4 @@ htmlcov/
 temp/
 *.pid
 *.log
+*.mo

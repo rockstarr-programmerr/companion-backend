@@ -114,6 +114,18 @@ coverage html
 ```
 Your report is inside `htmlcov` directory.
 
+### Translations
+#### Make messages
+Run this command to collect locale messages to `locale/<locale name>/LC_MESSAGES/django.po` of each app.
+```
+python manage.py makemessages --locale <locale name>
+```
+
+Compile locale messages to `.mo` files.
+```
+python manage.py compilemessages --locale <locale name> --ignore .venv
+```
+
 ## Production
 
 ### Database

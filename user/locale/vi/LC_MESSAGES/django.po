@@ -1,0 +1,170 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2021-10-25 21:55+0700\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+
+#: .\user\business\event_invitation.py:26
+msgid "This invitation has already been accepted."
+msgstr ""
+
+#: .\user\messages.py:4
+msgid "No active account found with the given credentials"
+msgstr "Thông tin đăng nhập không đúng"
+
+#: .\user\messages.py:5
+msgid "This password is entirely numeric."
+msgstr "Mật khẩu phải có cả chữ và số."
+
+#: .\user\messages.py:7
+#, python-format
+msgid ""
+"This password is too short. It must contain at least %(min_length)d "
+"character."
+msgid_plural ""
+"This password is too short. It must contain at least %(min_length)d "
+"characters."
+msgstr[0] "Mật khẩu phải có ít nhất %(min_length)d ký tự."
+
+#: .\user\models.py:34
+msgid "email address"
+msgstr ""
+
+#: .\user\models.py:37 .\user\serializers\user.py:57
+msgid "A user with that email already exists."
+msgstr "Người dùng với email này đã tồn tại."
+
+#: .\user\models.py:41
+msgid "nickname"
+msgstr "tên"
+
+#: .\user\models.py:45
+msgid "username"
+msgstr ""
+
+#: .\user\models.py:49
+msgid "avatar"
+msgstr "ảnh đại diện"
+
+#: .\user\serializers\user.py:101
+msgid "This deeplink is not allowed."
+msgstr ""
+
+#: .\user\tasks.py:22
+msgid "Split the bill"
+msgstr ""
+
+#: .\user\templates\user\reset_password\email_body.html:4
+#: .\user\templates\user\reset_password\email_body.txt:4
+msgid "Hi there"
+msgstr "Xin chào"
+
+#: .\user\templates\user\reset_password\email_body.html:6
+#, python-format
+msgid ""
+"\n"
+"<p>You're receiving this email because you requested a password reset for "
+"your user account at <b>%(app_name)s</b>.</p>\n"
+msgstr ""
+"\n"
+"<p>Bạn đang yêu cầu đặt lại mật khẩu cho tài khoản tại <b>%(app_name)s</b>.</"
+"p>\n"
+
+#: .\user\templates\user\reset_password\email_body.html:10
+#: .\user\templates\user\reset_password\email_body.txt:10
+msgid ""
+"Please click this link and then follow the instruction to reset your "
+"password:"
+msgstr "Hãy click vào link dưới đây và làm theo hướng dẫn để đặt lại mật khẩu:"
+
+#: .\user\templates\user\reset_password\email_body.html:13
+#: .\user\templates\user\reset_password\email_body.txt:13
+msgid "Your account information:"
+msgstr "Thông tin tài khoản của bạn:"
+
+#: .\user\templates\user\reset_password\email_body.html:15
+#: .\user\templates\user\reset_password\email_body.txt:14
+msgid "Name"
+msgstr "Tên"
+
+#: .\user\templates\user\reset_password\email_body.html:16
+#: .\user\templates\user\reset_password\email_body.txt:15
+msgid "Email"
+msgstr ""
+
+#: .\user\templates\user\reset_password\email_body.html:17
+#: .\user\templates\user\reset_password\email_body.txt:16
+msgid "Date joined"
+msgstr "Ngày tham gia"
+
+#: .\user\templates\user\reset_password\email_body.html:20
+#: .\user\templates\user\reset_password\email_body.txt:18
+msgid "Thanks for using our app!"
+msgstr "Cảm ơn đã sử dụng ứng dụng của chúng tôi!"
+
+#: .\user\templates\user\reset_password\email_body.html:22
+#, python-format
+msgid ""
+"\n"
+"<p>The <b>%(app_name)s</b> team.</p>\n"
+msgstr ""
+"\n"
+"<p>Đội ngũ <b>%(app_name)s</b>.</p>\n"
+
+#: .\user\templates\user\reset_password\email_body.txt:6
+#, python-format
+msgid ""
+"\n"
+"You're receiving this email because you requested a password reset for your "
+"user account at %(app_name)s.\n"
+msgstr ""
+"\n"
+"Bạn đang yêu cầu đặt lại mật khẩu cho tài khoản tại %(app_name)s.\n"
+
+#: .\user\templates\user\reset_password\email_body.txt:20
+#, python-format
+msgid ""
+"\n"
+"The %(app_name)s team\n"
+msgstr ""
+"\n"
+"Đội ngũ %(app_name)s\n"
+
+#: .\user\templates\user\reset_password\email_title.txt:4
+#, python-format
+msgid ""
+"\n"
+"Password reset on %(app_name)s\n"
+msgstr ""
+"\n"
+"Đặt lại mật khẩu cho tài khoản %(app_name)s\n"
+
+#: .\user\views\social_account\_utils.py:70
+msgid "Failed to authenticate user using social account."
+msgstr "Không thể đăng nhập bằng tài khoản xã hội"
+
+#: .\user\views\user.py:106
+msgid "Wrong password."
+msgstr "Sai mật khẩu."
+
+#: .\user\views\user.py:160
+msgid "Reset password token invalid."
+msgstr ""
+
+#: .\user\views\user.py:162
+msgid "Cannot find user with the given `uid`."
+msgstr ""
