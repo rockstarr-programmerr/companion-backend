@@ -24,6 +24,7 @@ class Transaction(TimeStamp):
     to_user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, related_name='transactions_received')
     transaction_type = models.CharField(max_length=12, choices=Types.choices)
     amount = models.PositiveIntegerField(validators=[MinValueValidator(1)])
+    description = models.TextField(blank=True)
 
     objects = TransactionQuerySet.as_manager()
 

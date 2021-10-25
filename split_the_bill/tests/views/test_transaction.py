@@ -149,6 +149,7 @@ class _TransactionTestCase(APITestCase):
             'from_user': self.get_user_json(transaction.from_user, request=request) if transaction.from_user else None,
             'to_user': self.get_user_json(transaction.to_user, request=request) if transaction.to_user else None,
             'amount': transaction.amount,
+            'description': transaction.description,
             'create_time': format_iso(transaction.create_time),
             'update_time': format_iso(transaction.update_time),
         }
@@ -416,6 +417,7 @@ class TransactionCreateTestCase(_TransactionTestCase):
             'from_user': self.get_user_detail_url(from_user.pk) if from_user else None,
             'to_user': self.get_user_detail_url(to_user.pk) if to_user else None,
             'amount': random.randint(10_000, 1_000_000),
+            'description': fake.paragraph(),
         }
 
         res = self.client.post(self.url, data)
@@ -506,6 +508,7 @@ class TransactionUpdateTestCase(_TransactionTestCase):
             'from_user': self.get_user_detail_url(from_user.pk) if from_user else None,
             'to_user': self.get_user_detail_url(to_user.pk) if to_user else None,
             'amount': random.randint(10_000, 1_000_000),
+            'description': fake.paragraph(),
         }
 
         req_method = getattr(self.client, method)
@@ -542,6 +545,7 @@ class TransactionUpdateTestCase(_TransactionTestCase):
             'from_user': None,
             'to_user': None,
             'amount': 9834765,
+            'description': fake.paragraph(),
         }
 
         # Unauthenticated user cannot access

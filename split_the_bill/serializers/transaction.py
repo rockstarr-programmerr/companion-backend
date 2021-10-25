@@ -13,7 +13,11 @@ class TransactionRequestSerializer(serializers.HyperlinkedModelSerializer):
 
     class Meta:
         model = Transaction
-        fields = ['event', 'transaction_type', 'from_user', 'to_user', 'amount']
+        fields = [
+            'event', 'transaction_type',
+            'from_user', 'to_user',
+            'amount', 'description',
+        ]
 
     def to_representation(self, transaction):
         serializer = TransactionResponseSerializer(instance=transaction, context=self.context)
@@ -115,5 +119,5 @@ class TransactionResponseSerializer(serializers.HyperlinkedModelSerializer):
         fields = [
             'url', 'pk', 'event',
             'transaction_type', 'from_user', 'to_user', 'amount',
-            'create_time', 'update_time',
+            'description', 'create_time', 'update_time',
         ]
