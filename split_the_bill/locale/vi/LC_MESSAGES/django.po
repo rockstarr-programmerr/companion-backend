@@ -1,0 +1,114 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+# 
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2021-10-25 21:55+0700\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+
+#: .\split_the_bill\permissions.py:6
+msgid "Only group owner has permission for this."
+msgstr ""
+
+#: .\split_the_bill\permissions.py:18
+msgid "Only event creator has permission for this."
+msgstr ""
+
+#: .\split_the_bill\permissions.py:30
+msgid "Only event members can execute this action."
+msgstr ""
+
+#: .\split_the_bill\serializers\_common.py:20
+#, python-format, python-brace-format
+msgid "\"{input}\" is not a valid choice. Valid choices are %s."
+msgstr ""
+
+#: .\split_the_bill\serializers\event.py:100
+#, python-format
+msgid "These users are already invited: %s."
+msgstr "Những người này đã được mời: %s."
+
+#: .\split_the_bill\serializers\event.py:111
+#, python-format
+msgid "This user is already the creator of the event: %s."
+msgstr "Người này đã là chủ chuyến đi: %s."
+
+#: .\split_the_bill\serializers\event.py:136
+#, python-format
+msgid "These users are not invited: %s."
+msgstr "Những người này chưa được mời: %s."
+
+#: .\split_the_bill\serializers\event.py:147
+#, python-format
+msgid "These users already accepted their invitations: %s."
+msgstr "Những người này đã chấp nhận lời mời: %s."
+
+#: .\split_the_bill\serializers\event.py:159
+msgid "Cannot remove creator of event."
+msgstr "Không thể xóa chủ chuyến đi."
+
+#: .\split_the_bill\serializers\event_invitation.py:26
+msgid "You cannot invite yourself."
+msgstr "Không thể tự mời chính mình."
+
+#: .\split_the_bill\serializers\event_invitation.py:30
+msgid "This user is already invited or is already a member."
+msgstr "Người này đã được mời hoặc đã là thành viên của chuyến đi."
+
+#: .\split_the_bill\serializers\group.py:32
+msgid "This group already exists."
+msgstr ""
+
+#: .\split_the_bill\serializers\transaction.py:28
+msgid "This event is already settled and won't accept anymore transactions."
+msgstr ""
+
+#: .\split_the_bill\serializers\transaction.py:46
+msgid "`from_user` and `to_user` must be different."
+msgstr "Người chuyển và người nhận phải khác nhau."
+
+#: .\split_the_bill\serializers\transaction.py:60
+msgid "`from_user` and `to_user` must be one of event's members."
+msgstr ""
+
+#: .\split_the_bill\serializers\transaction.py:73
+msgid ""
+"If `transaction_type` is \"user_to_user\" then both `from_user` and "
+"`to_user` are required."
+msgstr ""
+
+#: .\split_the_bill\serializers\transaction.py:81
+msgid ""
+"If `transaction_type` is \"user_to_fund\" then `from_user` is required and "
+"`to_user` must be null."
+msgstr ""
+
+#: .\split_the_bill\serializers\transaction.py:89
+msgid ""
+"If `transaction_type` is \"fund_to_user\" then `to_user` is required and "
+"`from_user` must be null."
+msgstr ""
+
+#: .\split_the_bill\serializers\transaction.py:97
+msgid ""
+"If `transaction_type` is \"user_expense\" then `from_user` is required and "
+"`to_user` must be null."
+msgstr ""
+
+#: .\split_the_bill\serializers\transaction.py:105
+msgid ""
+"If `transaction_type` is \"fund_expense\" then both `from_user` and "
+"`to_user` must be null."
+msgstr ""
