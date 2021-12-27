@@ -13,3 +13,4 @@ class SettlementViewSet(mixins.ListModelMixin,
     queryset = Settlement.objects.all()
     serializer_class = SettlementSerializer
     filterset_class = SettlementFilter
+    ordering = ['is_paid']  # Unpaid settlement is order first
