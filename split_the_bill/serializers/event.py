@@ -21,7 +21,7 @@ class EventSerializer(serializers.HyperlinkedModelSerializer):
     class Meta:
         model = Event
         fields = [
-            'url', 'pk', 'name', 'qr_code',
+            'url', 'pk', 'name', 'qr_code', 'join_token',
             'creator', 'members', 'is_settled', 'create_time',
             'transactions_url', 'invitations_url', 'settlements_url',
             'extra_action_urls',
