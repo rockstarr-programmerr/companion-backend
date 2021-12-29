@@ -38,10 +38,25 @@ class UserSearchFilter(filters.FilterSet):
         label='Nickname or email contains',
     )
 
+    exclude_emails = django_filters.CharFilter(
+        required=False,
+        method='filter_exclude_emails',
+        label='Exclude these emails',
+    )
+
+    @property
+    def qs(self):
+        parent = super().qs
+        return parent.exclude(pk=self.request.user.pk)
+
     def filter_nickname_or_email(self, queryset, name, value):
         # TODO: fuzzy search using MATCH AGAINST?
         condition = Q(nickname__icontains=value) | Q(email__icontains=value)
-        return queryset.filter(condition).exclude(pk=self.request.user.pk)
+        return queryset.filter(condition)
+
+    def filter_exclude_emails(self, queryset, name, value):
+        emails_to_exclude = map(str.strip, value.split(','))
+        return queryset.exclude(email__in=emails_to_exclude)
 
     class Meta:
         model = User
