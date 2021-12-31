@@ -74,6 +74,7 @@ env = environ.Env(
 
     WEBSITE_URL=(str, 'http://localhost:8080'),
     WEBSITE_RESET_PASSWORD_URL=(str, 'http://localhost:8080/new-password'),
+    SITE_ID=(int, 1)
 )
 # reading .env file
 env_file = str(BASE_DIR / '.env')
@@ -297,7 +298,7 @@ AUTHENTICATION_BACKENDS = [
     'allauth.account.auth_backends.AuthenticationBackend',
 ]
 
-SITE_ID = 1
+SITE_ID = env('SITE_ID')
 
 SOCIALACCOUNT_PROVIDERS = {
     'google': {
