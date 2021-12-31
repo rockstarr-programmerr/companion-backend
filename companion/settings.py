@@ -71,6 +71,9 @@ env = environ.Env(
     CELERY_BROKER_URL=(str, 'amqp://companion_user:companion_password@localhost:5672/companion_vhost'),
     FILE_UPLOAD_MAX_MEMORY_SIZE=(int, 2621440),
     FILE_UPLOAD_TEMP_DIR=(str, None),
+
+    WEBSITE_URL=(str, 'http://localhost:8080'),
+    WEBSITE_RESET_PASSWORD_URL=(str, 'http://localhost:8080/new-password'),
 )
 # reading .env file
 env_file = str(BASE_DIR / '.env')
@@ -347,3 +350,6 @@ IS_TESTING = 'test' in sys.argv
 if IS_TESTING:
     if 'DEFAULT_THROTTLE_RATES' in REST_FRAMEWORK:
         del REST_FRAMEWORK['DEFAULT_THROTTLE_RATES']
+
+WEBSITE_URL = env('WEBSITE_URL')
+WEBSITE_RESET_PASSWORD_URL = env('WEBSITE_RESET_PASSWORD_URL')

@@ -122,13 +122,12 @@ class UserViewSet(mixins.RetrieveModelMixin,
         """
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        deeplink = serializer.validated_data['deeplink']
         email = serializer.validated_data['email']
 
         user = ResetPasswordBusiness.get_user_by_email(email)
         if user:
             business = ResetPasswordBusiness(user)
-            business.send_email(deeplink)
+            business.send_email()
 
         return Response(status=status.HTTP_202_ACCEPTED)
 

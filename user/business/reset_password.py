@@ -1,4 +1,4 @@
-from user.serializers.user import EmailResetPasswordLinkTaskSerializer
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.core.exceptions import ValidationError
@@ -6,6 +6,7 @@ from django.utils.encoding import force_bytes
 from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 
 from companion.utils.url import update_url_params
+from user.serializers.user import EmailResetPasswordLinkTaskSerializer
 from user.tasks import send_email_reset_password_link_task
 
 User = get_user_model()
@@ -21,8 +22,8 @@ class ResetPasswordBusiness:
     def __init__(self, user):
         self.user = user
 
-    def send_email(self, deeplink):
-        url = self.get_link(deeplink)
+    def send_email(self):
+        url = self.get_link()
         serializer = EmailResetPasswordLinkTaskSerializer(instance=self.user)
         send_email_reset_password_link_task.delay(serializer.data, url)
 
@@ -31,10 +32,11 @@ class ResetPasswordBusiness:
         self.user.set_password(password)
         self.user.save()
 
-    def get_link(self, deeplink):
+    def get_link(self):
         token = self.token_generator.make_token(self.user)
         uid = urlsafe_base64_encode(force_bytes(self.user.pk))
-        url = update_url_params(deeplink, {'token': token, 'uid': uid})
+        url = settings.WEBSITE_RESET_PASSWORD_URL
+        url = update_url_params(url, {'token': token, 'uid': uid})
         return url
 
     def check_token(self, token):

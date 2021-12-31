@@ -92,15 +92,7 @@ class ChangePasswordSerializer(serializers.Serializer):
 
 
 class EmailResetPasswordLinkSerializer(serializers.Serializer):
-    deeplink = serializers.CharField()
     email = serializers.EmailField()
-
-    def validate_deeplink(self, link):
-        if link not in settings.ALLOWED_DEEPLINKS:
-            raise serializers.ValidationError(
-                _('This deeplink is not allowed.')
-            )
-        return link
 
 
 class ResetPasswordSerializer(serializers.Serializer):
