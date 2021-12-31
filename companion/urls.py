@@ -27,6 +27,7 @@ urlpatterns = [
     path(root_endpoints.SPLIT_THE_BILL, include('split_the_bill.urls')),
     path('api-auth/', include('rest_framework.urls')),
     path('admin/', admin.site.urls),
+    path('social-accounts/', include('allauth.urls')),
 ]
 
 if settings.DEBUG:
