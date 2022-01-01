@@ -60,7 +60,7 @@ class SplitTheBillBusiness:
                 cash_flow = _CashFlow(member, fund.holder, amount_diff)
                 cash_flows.append(cash_flow)
             elif amount_diff < 0:
-                cash_flow = _CashFlow(fund.holder, member, amount_diff)
+                cash_flow = _CashFlow(fund.holder, member, -amount_diff)
                 cash_flows.append(cash_flow)
 
         return cash_flows
@@ -77,6 +77,10 @@ class SplitTheBillBusiness:
                     net_amounts[cash_flow.from_user] -= cash_flow.amount
                 if cash_flow.to_user in net_amounts:
                     net_amounts[cash_flow.to_user] += cash_flow.amount
+
+            # If all members' `net_amount` is 0, there's nothing to settle
+            if all(amount == 0 for amount in net_amounts.values()):
+                break
 
             # Find biggest creditor and debtor
             biggest_credit = 0
