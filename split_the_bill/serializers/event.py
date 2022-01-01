@@ -28,6 +28,7 @@ class EventSerializer(serializers.HyperlinkedModelSerializer):
         ]
         extra_kwargs = {
             'qr_code': {'read_only': True},
+            'join_token': {'read_only': True},
         }
 
     def get_transactions_url(self, event):
