@@ -36,12 +36,21 @@ class DataDeletionCallback(APIView):
 
         confirmation_code = uuid.uuid4().hex
 
-        deletion_request = FacebookDataDeletionRequest.objects.create(
-            confirmation_code=confirmation_code,
-            issued_at=datetime.fromtimestamp(signed_data['issued_at']),
-            expires=datetime.fromtimestamp(signed_data['expires']),
-            user_id=signed_data['user_id'],
-        )
+        data = {
+            'confirmation_code': confirmation_code,
+            'issued_at': None,
+            'expires': None,
+            'user_id': signed_data.get('user_id'),
+        }
+        issued_at = signed_data.get('issued_at')
+        expires = signed_data.get('expires')
+
+        if isinstance(issued_at, int):
+            data['issued_at'] = datetime.fromtimestamp(issued_at)
+        if isinstance(expires, int):
+            data['expires'] = datetime.fromtimestamp(expires)
+
+        deletion_request = FacebookDataDeletionRequest.objects.create(**data)
 
         try:
             user = User.objects.filter(pk=signed_data['user_id']).first()
