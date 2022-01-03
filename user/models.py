@@ -85,3 +85,16 @@ class User(AbstractUser):
             with Image.open(image.path) as f:
                 f.thumbnail((width, height))
                 f.save(image.path)
+
+
+class FacebookDataDeletionRequest(models.Model):
+    class Statuses(models.TextChoices):
+        PENDING = 'pending'
+        SUCCESS = 'success'
+        FAIL = 'fail'
+
+    user_id = models.BigIntegerField()
+    confirmation_code = models.CharField(max_length=255)
+    status = models.CharField(max_length=7, choices=Statuses.choices, default=Statuses.PENDING)
+    issued_at = models.BigIntegerField()
+    expires = models.BigIntegerField()
