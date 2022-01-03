@@ -1,6 +1,7 @@
-from datetime import datetime
+import json
 import logging
 import uuid
+from datetime import datetime
 
 from allauth.socialaccount.models import SocialApp
 from allauth.socialaccount.providers.facebook.views import FacebookOAuth2Adapter
@@ -11,9 +12,9 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from ._utils import MobileAppCallbackView
 from ...models import FacebookDataDeletionRequest
 from ...serializers.social_account import FbDataDeletionStatusSerializer
+from ._utils import MobileAppCallbackView
 
 User = get_user_model()
 
@@ -59,6 +60,7 @@ class DataDeletionCallback(APIView):
             deletion_request.save()
         except Exception as e:
             logger.exception(e)
+            logger.error(json.dumps(signed_data))
             deletion_request.status = FacebookDataDeletionRequest.Statuses.FAIL
             deletion_request.save()
 
