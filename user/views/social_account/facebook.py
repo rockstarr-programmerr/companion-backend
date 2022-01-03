@@ -66,7 +66,7 @@ class DataDeletionCallback(APIView):
             deletion_request.status = FacebookDataDeletionRequest.Statuses.FAIL
             deletion_request.save()
 
-        status_url = f'{settings.WEBSITE_URL}/facebook-data-deletion-status?code={confirmation_code}'
+        status_url = f'{settings.WEBSITE_URL}/account/facebook-data-deletion-status?code={confirmation_code}'
 
         return Response({
             'url': status_url,
