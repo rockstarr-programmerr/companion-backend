@@ -7,6 +7,7 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.shortcuts import reverse
 from facepy import SignedRequest
+from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -25,7 +26,9 @@ class MobileAppFacebookAdapter(FacebookOAuth2Adapter):
 callback_view = MobileAppCallbackView.adapter_view(MobileAppFacebookAdapter)
 
 
-class FacebookDataDeletionCallback(APIView):
+class DataDeletionCallback(APIView):
+    permission_classes = [AllowAny]
+
     def post(self, request):
         signed_request = request.data['signed_request']
         signed_data = self.parse_signed_request(signed_request)
@@ -67,3 +70,24 @@ class FacebookDataDeletionCallback(APIView):
         else:
             fb_app = SocialApp.objects.get(provider='facebook')
             return fb_app.secret
+
+
+class DataDeletionStatus(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        confirmation_code = request.query_params.get('code') or ''
+        data = {
+            'confirmation_code': confirmation_code,
+            'status': '',
+            'issued_at': '',
+            'expires': '',
+        }
+
+        status = FacebookDataDeletionRequest.objects.filter(confirmation_code=confirmation_code).first()
+        if status:
+            data['status'] = status.status
+            data['issued_at'] = status.issued_at
+            data['expires'] = status.expires
+
+        return Response(data)
