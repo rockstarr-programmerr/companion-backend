@@ -3,7 +3,7 @@ import logging
 import uuid
 from datetime import datetime
 
-from allauth.socialaccount.models import SocialApp
+from allauth.socialaccount.models import SocialApp, SocialAccount
 from allauth.socialaccount.providers.facebook.views import FacebookOAuth2Adapter
 from django.conf import settings
 from django.contrib.auth import get_user_model
@@ -36,12 +36,13 @@ class DataDeletionCallback(APIView):
         signed_data = self.parse_signed_request(signed_request)
 
         confirmation_code = uuid.uuid4().hex
+        user_id = signed_data['user_id']
 
         data = {
             'confirmation_code': confirmation_code,
             'issued_at': None,
             'expires': None,
-            'user_id': signed_data.get('user_id'),
+            'user_id':user_id,
         }
         issued_at = signed_data.get('issued_at')
         expires = signed_data.get('expires')
@@ -54,7 +55,8 @@ class DataDeletionCallback(APIView):
         deletion_request = FacebookDataDeletionRequest.objects.create(**data)
 
         try:
-            user = User.objects.filter(pk=signed_data['user_id']).first()
+            social_account = SocialAccount.objects.filter(uid=user_id).first()
+            user = social_account.user
             user.delete()
             deletion_request.status = FacebookDataDeletionRequest.Statuses.SUCCESS
             deletion_request.save()
