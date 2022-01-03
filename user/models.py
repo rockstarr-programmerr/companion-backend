@@ -96,5 +96,5 @@ class FacebookDataDeletionRequest(models.Model):
     user_id = models.BigIntegerField()
     confirmation_code = models.CharField(max_length=255, unique=True)
     status = models.CharField(max_length=7, choices=Statuses.choices, default=Statuses.PENDING)
-    issued_at = models.BigIntegerField()
-    expires = models.BigIntegerField()
+    issued_at = models.DateTimeField()
+    expires = models.DateTimeField()

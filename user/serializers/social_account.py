@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from ..models import FacebookDataDeletionRequest
 
 
 class CallbackViewSerializer(serializers.Serializer):
@@ -14,3 +15,9 @@ class CallbackViewSerializer(serializers.Serializer):
 class CallbackViewResponseSerializer(serializers.Serializer):
     access = serializers.CharField()
     refresh = serializers.CharField()
+
+
+class FbDataDeletionStatusSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = FacebookDataDeletionRequest
+        fields = ['confirmation_code', 'status', 'issued_at', 'expires']

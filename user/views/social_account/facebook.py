@@ -1,3 +1,4 @@
+from datetime import datetime
 import logging
 import uuid
 
@@ -5,7 +6,6 @@ from allauth.socialaccount.models import SocialApp
 from allauth.socialaccount.providers.facebook.views import FacebookOAuth2Adapter
 from django.conf import settings
 from django.contrib.auth import get_user_model
-from django.shortcuts import reverse
 from facepy import SignedRequest
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
@@ -13,6 +13,7 @@ from rest_framework.views import APIView
 
 from ._utils import MobileAppCallbackView
 from ...models import FacebookDataDeletionRequest
+from ...serializers.social_account import FbDataDeletionStatusSerializer
 
 User = get_user_model()
 
@@ -37,8 +38,8 @@ class DataDeletionCallback(APIView):
 
         deletion_request = FacebookDataDeletionRequest.objects.create(
             confirmation_code=confirmation_code,
-            issued_at=signed_data['issued_at'],
-            expires=signed_data['expires'],
+            issued_at=datetime.fromtimestamp(signed_data['issued_at']),
+            expires=datetime.fromtimestamp(signed_data['expires']),
             user_id=signed_data['user_id'],
         )
 
@@ -80,8 +81,8 @@ class DataDeletionStatus(APIView):
         data = {
             'confirmation_code': confirmation_code,
             'status': '',
-            'issued_at': '',
-            'expires': '',
+            'issued_at': None,
+            'expires': None,
         }
 
         status = FacebookDataDeletionRequest.objects.filter(confirmation_code=confirmation_code).first()
@@ -90,4 +91,5 @@ class DataDeletionStatus(APIView):
             data['issued_at'] = status.issued_at
             data['expires'] = status.expires
 
-        return Response(data)
+        serializer = FbDataDeletionStatusSerializer(instance=data)
+        return Response(serializer.data)
